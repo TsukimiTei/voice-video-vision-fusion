@@ -23,7 +23,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
 
   // 从 localStorage 加载 API key
   React.useEffect(() => {
-    const savedApiKey = localStorage.getItem('flux-kontext-api-key');
+    const savedApiKey = localStorage.getItem('bfl-api-key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
     }
@@ -31,7 +31,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
 
   const generateImage = async () => {
     if (!apiKey) {
-      toast.error('请输入 Flux Kontext API 密钥');
+      toast.error('请输入 BFL API 密钥');
       return;
     }
 
@@ -90,15 +90,21 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       formData.append('prompt', command);
       formData.append('strength', '0.8');
       
-      console.log('发送API请求到:', 'https://api.fluxkontext.com/v1/image-to-image');
+      console.log('发送API请求到:', 'https://api.bfl.ai/v1/flux-kontext-pro');
       
-      // 调用 Flux Kontext API
-      const apiResponse = await fetch('https://api.fluxkontext.com/v1/image-to-image', {
+      // 调用 BFL API (正确的API端点)
+      const apiResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'x-key': apiKey,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          prompt: command,
+          image: sourceImage,
+          strength: 0.8,
+          aspect_ratio: "1:1"
+        }),
       });
 
       console.log('API响应状态:', apiResponse.status);
@@ -113,12 +119,13 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       const result = await apiResponse.json();
       console.log('API响应数据:', result);
       
-      if (result.image_url) {
-        onResult(result.image_url);
-        toast.success('图像生成成功！');
+      if (result.id && result.polling_url) {
+        // BFL API 是异步的，需要轮询结果
+        toast.success('图像生成请求已提交，正在处理...');
+        await pollForResult(result.polling_url, apiKey);
       } else {
         console.error('API响应结构:', result);
-        throw new Error('API 响应中未找到图像 URL');
+        throw new Error('API 响应中未找到请求ID或轮询URL');
       }
     } catch (error) {
       console.error('图像生成详细错误:', error);
@@ -153,6 +160,50 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const pollForResult = async (pollingUrl: string, apiKey: string) => {
+    const maxAttempts = 60; // 最多轮询60次 (30秒)
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500)); // 等待0.5秒
+        
+        const pollResponse = await fetch(pollingUrl, {
+          headers: {
+            'x-key': apiKey,
+            'accept': 'application/json'
+          }
+        });
+        
+        if (!pollResponse.ok) {
+          throw new Error(`轮询失败: ${pollResponse.status}`);
+        }
+        
+        const pollResult = await pollResponse.json();
+        console.log('轮询状态:', pollResult.status);
+        
+        if (pollResult.status === 'Ready') {
+          if (pollResult.result?.sample) {
+            onResult(pollResult.result.sample);
+            toast.success('图像生成完成！');
+            return;
+          } else {
+            throw new Error('结果中未找到图像URL');
+          }
+        } else if (pollResult.status === 'Error' || pollResult.status === 'Failed') {
+          throw new Error(`生成失败: ${JSON.stringify(pollResult)}`);
+        }
+        
+        attempts++;
+      } catch (error) {
+        console.error('轮询错误:', error);
+        throw error;
+      }
+    }
+    
+    throw new Error('图像生成超时，请重试');
   };
 
   const copyErrorLog = async () => {
@@ -202,15 +253,15 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                   <Label className="text-sm font-medium text-muted-foreground">
                     API 密钥状态
                   </Label>
-                  <p className="text-sm text-primary font-medium mt-1">✓ 已配置 Flux Kontext API 密钥</p>
+                  <p className="text-sm text-primary font-medium mt-1">✓ 已配置 BFL API 密钥</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    localStorage.removeItem('flux-kontext-api-key');
-                    setApiKey('');
-                  }}
+                onClick={() => {
+                  localStorage.removeItem('bfl-api-key');
+                  setApiKey('');
+                }}
                 >
                   重新配置
                 </Button>
@@ -218,7 +269,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
             </Card>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="apiKey">Flux Kontext API 密钥</Label>
+              <Label htmlFor="apiKey">BFL API 密钥</Label>
               <Input
                 id="apiKey"
                 type="password"
@@ -226,12 +277,12 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                 value={apiKey}
                 onChange={(e) => {
                   setApiKey(e.target.value);
-                  localStorage.setItem('flux-kontext-api-key', e.target.value);
+                  localStorage.setItem('bfl-api-key', e.target.value);
                 }}
                 className="bg-background/50"
               />
               <p className="text-xs text-muted-foreground">
-                请在 Flux Kontext 官网获取 API 密钥
+                请在 BFL 官网 (api.bfl.ai) 获取 API 密钥
               </p>
             </div>
           )}
