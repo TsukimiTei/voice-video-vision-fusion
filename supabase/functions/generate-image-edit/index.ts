@@ -37,24 +37,25 @@ serve(async (req) => {
     }
 
     // Submit generation request to BFL API
-    const submitResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
+    console.log('Submitting to BFL API with key:', BFL_API_KEY.substring(0, 8) + '...')
+    const submitResponse = await fetch('https://api.bfl.ml/v1/flux-pro-1.1', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-key': BFL_API_KEY,
-        'Accept': 'application/json',
+        'X-Key': BFL_API_KEY,
       },
       body: JSON.stringify({
         prompt,
         image,
         aspect_ratio,
-        guidance: 3.5,
+        output_format: 'jpeg',
         safety_tolerance: 2
       }),
     })
 
     if (!submitResponse.ok) {
       const errorText = await submitResponse.text()
+      console.error('BFL API error:', submitResponse.status, errorText)
       return new Response(
         JSON.stringify({ 
           error: `BFL API error: ${submitResponse.status}`,
@@ -114,8 +115,7 @@ async function pollForResult(pollingUrl: string, apiKey: string, maxAttempts = 1
     const pollResponse = await fetch(pollingUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'x-key': apiKey,
+        'X-Key': apiKey,
       },
     })
     
