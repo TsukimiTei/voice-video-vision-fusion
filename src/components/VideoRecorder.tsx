@@ -251,6 +251,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
+        style={{ transform: 'scaleX(-1)' }}
         autoPlay
         muted
         playsInline
@@ -314,8 +315,8 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           </div>
         )}
 
-        {/* Center Recording Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
+        {/* Bottom Recording Button */}
+        <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-12">
           <div className="flex flex-col items-center gap-4">
             <Button
               onMouseDown={handlePressStart}
