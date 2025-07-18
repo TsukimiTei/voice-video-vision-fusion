@@ -141,10 +141,10 @@ export const CameraInterface: React.FC<CameraInterfaceProps> = ({ onGenerateImag
     
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     
-    if (speechText) {
-      onGenerateImage(imageData, speechText);
-    } else {
-      toast.error('未检测到语音命令');
+    // 总是进入下一步，即使没有语音输入
+    onGenerateImage(imageData, speechText || '');
+    if (!speechText) {
+      toast.info('未检测到语音命令，请在下一步手动输入提示词');
     }
   };
 

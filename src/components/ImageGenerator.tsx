@@ -245,22 +245,38 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
           {/* 提示词输入区域 */}
           <div className="space-y-3">
             <Label htmlFor="prompt" className="text-sm font-medium">
-              AI 生成提示词
+              AI 生成提示词 {!command && <span className="text-primary">*</span>}
             </Label>
-            {command && (
-              <p className="text-xs text-muted-foreground">
-                检测到的语音命令：{command}
-              </p>
+            {command ? (
+              <Card className="p-3 bg-secondary/50">
+                <p className="text-xs text-muted-foreground mb-2">
+                  检测到的语音命令：
+                </p>
+                <p className="text-sm font-medium">{command}</p>
+              </Card>
+            ) : (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  ⚠️ 未检测到语音命令，请手动输入提示词
+                </p>
+              </div>
             )}
             <textarea
               id="prompt"
               value={manualPrompt}
               onChange={(e) => setManualPrompt(e.target.value)}
-              placeholder={command || "请输入图像生成提示词..."}
-              className="w-full min-h-[100px] p-3 rounded-md border border-border bg-background/50 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder={command ? "您可以编辑语音命令或输入新的提示词..." : "请输入图像生成提示词，例如：把天空变成夜晚、添加彩虹、改变颜色等..."}
+              className={`w-full min-h-[120px] p-3 rounded-md border resize-none focus:outline-none focus:ring-2 transition-all ${
+                !command && !manualPrompt.trim() 
+                  ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 focus:ring-amber-400' 
+                  : 'border-border bg-background/50 focus:ring-primary'
+              }`}
             />
             <p className="text-xs text-muted-foreground">
-              您可以编辑或重新输入提示词来指导 AI 图像生成
+              {command 
+                ? "您可以编辑或重新输入提示词来指导 AI 图像生成" 
+                : "请描述您希望如何修改图片，AI 将根据您的描述生成新图像"
+              }
             </p>
           </div>
 
