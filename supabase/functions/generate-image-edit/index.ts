@@ -25,6 +25,19 @@ serve(async (req) => {
       );
     }
 
+    // Clean the image data - BFL API expects pure base64 without data URL prefix
+    let cleanImageData = image;
+    if (image.includes('data:image')) {
+      // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
+      cleanImageData = image.split(',')[1];
+    }
+    
+    console.log('Request details:', {
+      prompt: prompt,
+      imageDataLength: cleanImageData.length,
+      aspectRatio: aspect_ratio
+    });
+
     // Get BFL API key from environment
     const BFL_API_KEY = Deno.env.get('BFL_API_KEY');
     if (!BFL_API_KEY) {
@@ -38,6 +51,8 @@ serve(async (req) => {
     }
 
     console.log('Starting FLUX Kontext image editing...');
+    console.log('Image data sample (first 100 chars):', cleanImageData.substring(0, 100));
+    console.log('Prompt:', prompt);
 
     // Submit generation request to BFL API using the correct endpoint
     const submitResponse = await fetch('https://api.bfl.ml/v1/flux-kontext-pro', {
@@ -48,7 +63,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt,
-        image,
+        image: cleanImageData,
         aspect_ratio,
         output_format: 'jpeg',
         safety_tolerance: 2
@@ -71,7 +86,7 @@ serve(async (req) => {
     }
 
     const submitData = await submitResponse.json();
-    console.log('BFL API response:', submitData);
+    console.log('BFL API response:', JSON.stringify(submitData, null, 2));
     
     if (!submitData.id) {
       return new Response(
