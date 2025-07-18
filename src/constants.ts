@@ -1,6 +1,6 @@
 // API Configuration
 export const FLUX_KONTEXT_API_URL = 'https://api.fluxkontext.com/v1/generate';
-export const FLUX_KONTEXT_API_KEY = import.meta.env.VITE_FLUX_KONTEXT_API_KEY || '';
+export const FLUX_KONTEXT_API_KEY = localStorage.getItem('flux_api_key') || '';
 
 // Recording Configuration
 export const MAX_RECORDING_TIME_MS = 30 * 1000; // 30 seconds

@@ -11,6 +11,8 @@ export const Home: React.FC = () => {
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState(FLUX_KONTEXT_API_KEY);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!FLUX_KONTEXT_API_KEY);
 
   const { stream, videoRef, isRecording, start: startRecording, stop: stopRecording, error: recordingError } = useRecorder();
   const { transcript, isListening, start: startSpeech, stop: stopSpeech, error: speechError } = useSpeech();
@@ -36,7 +38,7 @@ export const Home: React.FC = () => {
       return;
     }
 
-    if (!FLUX_KONTEXT_API_KEY) {
+    if (!apiKey) {
       setApiError('API key not configured');
       return;
     }
@@ -48,7 +50,7 @@ export const Home: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${FLUX_KONTEXT_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           prompt: transcript,
@@ -78,6 +80,14 @@ export const Home: React.FC = () => {
     }
   };
 
+  const handleApiKeySubmit = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('flux_api_key', apiKey.trim());
+      setShowApiKeyInput(false);
+      setApiError(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="max-w-2xl w-full space-y-6">
@@ -85,6 +95,31 @@ export const Home: React.FC = () => {
         <h1 className="text-3xl font-bold text-center text-foreground">
           Voice Video Vision
         </h1>
+
+        {/* API Key Input */}
+        {showApiKeyInput && (
+          <div className="bg-card rounded-lg p-6 border">
+            <h2 className="text-lg font-semibold mb-4">Setup Required</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter your Flux Kontext API key to enable image generation:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your API key"
+                className="flex-1 px-3 py-2 border border-input rounded-md bg-background text-foreground"
+              />
+              <button
+                onClick={handleApiKeySubmit}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Video Container */}
         <div className="relative bg-card rounded-lg overflow-hidden shadow-lg">
