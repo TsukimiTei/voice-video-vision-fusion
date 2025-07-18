@@ -23,7 +23,7 @@ export const VideoRecorder = () => {
     resetTranscript,
     error: speechError 
   } = useSpeechRecognition();
-  const { generateImage, isGenerating, result, error: imageError } = useImageGeneration();
+  const { generateImage, isGenerating, result, error: imageError, statusLog } = useImageGeneration();
 
   const handleStartRecording = async () => {
     setViewState('recording');
@@ -151,9 +151,32 @@ export const VideoRecorder = () => {
               </div>
             </div>
           ) : (
-            <div className="text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
-              <p className="text-muted-foreground">正在生成图像，请稍候...</p>
+            <div className="space-y-4">
+              <div className="text-center space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">正在生成图像，请稍候...</p>
+              </div>
+              
+              {/* API 调用明细 */}
+              {statusLog.length > 0 && (
+                <Card className="p-4 bg-muted/30">
+                  <h3 className="font-semibold mb-3 text-sm">API 调用明细：</h3>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {statusLog.map((log, index) => (
+                      <p key={index} className="text-xs font-mono text-muted-foreground">
+                        {log}
+                      </p>
+                    ))}
+                  </div>
+                </Card>
+              )}
+              
+              {imageError && (
+                <Card className="p-4 bg-destructive/10 border-destructive/20">
+                  <h3 className="font-semibold mb-2 text-destructive">错误详情：</h3>
+                  <p className="text-sm text-destructive">{imageError}</p>
+                </Card>
+              )}
             </div>
           )}
         </Card>
