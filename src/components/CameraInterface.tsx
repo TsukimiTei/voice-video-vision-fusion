@@ -135,31 +135,40 @@ export const CameraInterface: React.FC<CameraInterfaceProps> = ({ onGenerateImag
     
     if (!ctx) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-    
-    let imageData;
     try {
-      imageData = canvas.toDataURL('image/jpeg', 0.8);
-      console.log('生成的图像数据长度:', imageData.length);
-      console.log('图像数据开头:', imageData.substring(0, 50));
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
       
-      // 验证生成的数据URL格式
-      if (!imageData.startsWith('data:image/')) {
-        throw new Error('生成的不是有效的图像数据URL');
+      // 使用更兼容的方法生成图像数据
+      const imageBlob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            throw new Error('Canvas toBlob failed');
+          }
+        }, 'image/jpeg', 0.8);
+      });
+      
+      // 转换为base64
+      const imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(imageBlob);
+      });
+      
+      console.log('成功生成图像数据，大小:', imageData.length);
+      
+      // 总是进入下一步，即使没有语音输入
+      onGenerateImage(imageData, speechText || '');
+      if (!speechText) {
+        toast.info('未检测到语音命令，请在下一步手动输入提示词');
       }
       
     } catch (error) {
-      console.error('toDataURL失败:', error);
+      console.error('图像捕获失败:', error);
       toast.error('图像捕获失败，请重试');
-      return;
-    }
-    
-    // 总是进入下一步，即使没有语音输入
-    onGenerateImage(imageData, speechText || '');
-    if (!speechText) {
-      toast.info('未检测到语音命令，请在下一步手动输入提示词');
     }
   };
 
