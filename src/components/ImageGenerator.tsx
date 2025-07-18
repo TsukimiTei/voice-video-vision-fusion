@@ -104,21 +104,47 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
             <p className="text-lg font-medium mt-1">{command}</p>
           </Card>
 
-          {/* API 密钥输入 */}
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">Flux Kontext API 密钥</Label>
-            <Input
-              id="apiKey"
-              type="password"
-              placeholder="请输入您的 API 密钥"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="bg-background/50"
-            />
-            <p className="text-xs text-muted-foreground">
-              请在 Flux Kontext 官网获取 API 密钥
-            </p>
-          </div>
+          {/* API 密钥状态 */}
+          {apiKey ? (
+            <Card className="p-4 bg-secondary/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">
+                    API 密钥状态
+                  </Label>
+                  <p className="text-sm text-primary font-medium mt-1">✓ 已配置 Flux Kontext API 密钥</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    localStorage.removeItem('flux-kontext-api-key');
+                    setApiKey('');
+                  }}
+                >
+                  重新配置
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">Flux Kontext API 密钥</Label>
+              <Input
+                id="apiKey"
+                type="password"
+                placeholder="请输入您的 API 密钥"
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  localStorage.setItem('flux-kontext-api-key', e.target.value);
+                }}
+                className="bg-background/50"
+              />
+              <p className="text-xs text-muted-foreground">
+                请在 Flux Kontext 官网获取 API 密钥
+              </p>
+            </div>
+          )}
 
           {/* 生成按钮 */}
           <Button
