@@ -94,43 +94,100 @@ export const useRecorder = (): UseRecorderReturn => {
 
   const stop = useCallback(async (): Promise<string | null> => {
     try {
+      console.log('🛑 Stopping recording...');
+      
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-      }
-
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        setStream(null);
+        console.log('📹 MediaRecorder stopped');
       }
 
       setIsRecording(false);
 
-      // Capture last frame
-      if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
-          canvas.width = videoRef.current.videoWidth;
-          canvas.height = videoRef.current.videoHeight;
-          console.log('Capturing frame with dimensions:', canvas.width, 'x', canvas.height);
-          
-          ctx.drawImage(videoRef.current, 0, 0);
-          
-          const dataURL = canvas.toDataURL('image/png');
-          console.log('Frame captured, data URL length:', dataURL.length);
-          
-          // Remove data:image/png;base64, prefix
-          return dataURL.split(',')[1];
-        }
-      } else {
-        console.error('Video element not ready for frame capture');
+      // Wait a moment for video to stabilize before capturing
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture last frame before stopping the stream
+      console.log('🖼️ Attempting to capture video frame...');
+      console.log('Video element:', videoRef.current);
+      
+      if (!videoRef.current) {
+        console.error('❌ Video element reference is null');
+        return null;
       }
 
-      return null;
+      const video = videoRef.current;
+      console.log('Video properties:', {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        readyState: video.readyState,
+        currentTime: video.currentTime,
+        duration: video.duration,
+        ended: video.ended,
+        paused: video.paused
+      });
+
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.error('❌ Video has zero dimensions');
+        return null;
+      }
+
+      if (video.readyState < 2) {
+        console.error('❌ Video not ready (readyState < 2)');
+        return null;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ Could not get canvas context');
+        return null;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      console.log('📐 Canvas dimensions set:', canvas.width, 'x', canvas.height);
+      
+      try {
+        ctx.drawImage(video, 0, 0);
+        console.log('✅ Image drawn to canvas');
+        
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        console.log('📸 Frame captured, data URL length:', dataURL.length);
+        
+        if (dataURL.length < 1000) {
+          console.error('❌ Captured image too small, likely failed');
+          return null;
+        }
+        
+        // Stop stream only after successful capture
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            console.log('🔇 Stopping track:', track.kind);
+            track.stop();
+          });
+          setStream(null);
+        }
+        
+        // Remove data:image/jpeg;base64, prefix
+        const base64Data = dataURL.split(',')[1];
+        console.log('✅ Successfully captured frame, base64 length:', base64Data.length);
+        return base64Data;
+        
+      } catch (drawError) {
+        console.error('❌ Error drawing to canvas:', drawError);
+        return null;
+      }
+
     } catch (err) {
-      console.error('Failed to stop recording:', err);
+      console.error('💥 Failed to stop recording:', err);
       return null;
+    } finally {
+      // Ensure stream is stopped even if capture fails
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
     }
   }, [stream]);
 
