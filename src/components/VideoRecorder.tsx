@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw, SwitchCamera, X, Download } from 'lucide-react';
+import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw, SwitchCamera, X, Download, Circle } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useImageGeneration } from '../hooks/useImageGeneration';
@@ -18,6 +18,7 @@ interface VideoRecorderProps {
 
 export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const [viewState, setViewState] = useState<ViewState>('home');
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
   const { isRecording, videoRef, startCamera, stopCamera, switchCamera, facingMode, error: cameraError } = useCamera();
   const { 
     isListening, 
@@ -34,20 +35,22 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const handleStartRecording = async () => {
     setViewState('recording');
     await startCamera();
-    startListening();
     resetTranscript();
   };
 
-  const handleStopRecording = async () => {
+  const handlePressStart = async () => {
+    setIsRecordingActive(true);
+    startListening();
+  };
+
+  const handlePressEnd = async () => {
+    setIsRecordingActive(false);
     stopListening();
     
     if (videoRef.current) {
       const frameBase64 = captureVideoFrame(videoRef.current);
       if (frameBase64 && finalTranscript) {
         try {
-          // toast.success('正在翻译指令...');
-          // const englishPrompt = await translateToEnglish(finalTranscript);
-          
           toast.success('Generating image...');
           await generateImage(frameBase64, finalTranscript);
           setViewState('result');
@@ -79,6 +82,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   };
 
   const handleCancelRecording = () => {
+    setIsRecordingActive(false);
     stopListening();
     stopCamera();
     setViewState('home');
@@ -263,8 +267,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               onClick={handleCancelRecording}
               className="text-white hover:bg-white/20"
             >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
+              <X className="h-4 w-4" />
             </Button>
             
             <div className="flex items-center gap-3">
@@ -311,29 +314,34 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           </div>
         )}
 
-        {/* Bottom Controls */}
-        <div className="mt-auto p-6 bg-gradient-to-t from-black/50 to-transparent">
-          <div className="flex justify-center">
+        {/* Center Recording Button */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
             <Button
-              onClick={handleStopRecording}
+              onMouseDown={handlePressStart}
+              onMouseUp={handlePressEnd}
+              onTouchStart={handlePressStart}
+              onTouchEnd={handlePressEnd}
               size="lg"
-              variant="destructive"
-              className="rounded-full h-16 w-16"
+              variant={isRecordingActive ? "destructive" : "default"}
+              className={`rounded-full h-24 w-24 transition-all duration-200 ${
+                isRecordingActive ? 'scale-110 shadow-lg' : 'hover:scale-105'
+              }`}
               disabled={isGenerating}
             >
               {isGenerating ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : isRecordingActive ? (
+                <Square className="h-8 w-8" />
               ) : (
-                <Square className="h-6 w-6" />
+                <Circle className="h-8 w-8" />
               )}
             </Button>
-          </div>
-          
-          {isGenerating && (
-            <p className="text-center text-white mt-4">
-              Generating image, please wait...
+            
+            <p className="text-white text-center font-medium bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm">
+              {isGenerating ? 'Generating...' : isRecordingActive ? 'Recording... Release to stop' : 'Hold to record'}
             </p>
-          )}
+          </div>
         </div>
       </div>
 
