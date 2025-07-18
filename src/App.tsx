@@ -1,10 +1,10 @@
-import { Home } from './components/Home';
+import { VideoRecorder } from './components/VideoRecorder';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
     <>
-      <Home />
+      <VideoRecorder />
       <Toaster />
     </>
   );
