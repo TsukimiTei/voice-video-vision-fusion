@@ -44,14 +44,49 @@ export const ImageEditor = ({ onBack }: ImageEditorProps) => {
       return;
     }
 
-    // Convert image to base64
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      const base64Data = base64.split(',')[1]; // Remove data:image/... prefix
-      await generateImage(base64Data, prompt.trim());
-    };
-    reader.readAsDataURL(selectedImage);
+    // 压缩并转换图像为 base64
+    const compressedBase64 = await compressImage(selectedImage);
+    await generateImage(compressedBase64, prompt.trim());
+  };
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // 计算压缩后的尺寸（最大 1024x1024）
+        const maxSize = 1024;
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // 绘制压缩后的图像
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // 转换为 base64（JPEG 格式，质量 0.8）
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        const base64Data = base64.split(',')[1]; // 移除 data:image/jpeg;base64, 前缀
+        resolve(base64Data);
+      };
+      
+      img.onerror = () => reject(new Error('图像处理失败'));
+      img.src = URL.createObjectURL(file);
+    });
   };
 
   const handleReset = () => {
