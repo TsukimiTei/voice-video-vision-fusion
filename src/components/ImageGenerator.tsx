@@ -20,14 +20,17 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [errorLog, setErrorLog] = useState<string | null>(null);
+  const [manualPrompt, setManualPrompt] = useState('');
 
-  // 从 localStorage 加载 API key
+  // 从 localStorage 加载 API key 并初始化手动提示词
   React.useEffect(() => {
     const savedApiKey = localStorage.getItem('bfl-api-key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
     }
-  }, []);
+    // 初始化手动提示词为语音命令
+    setManualPrompt(command);
+  }, [command]);
 
   const generateImage = async () => {
     if (!apiKey) {
@@ -40,8 +43,9 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       return;
     }
 
-    if (!command) {
-      toast.error('未找到语音命令');
+    const finalPrompt = manualPrompt.trim() || command;
+    if (!finalPrompt) {
+      toast.error('请输入提示词或语音命令');
       return;
     }
 
@@ -51,7 +55,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       console.log('开始图像生成...');
       console.log('API Key状态:', apiKey ? '已设置' : '未设置');
       console.log('源图像URL:', sourceImage);
-      console.log('语音命令:', command);
+      console.log('最终提示词:', finalPrompt);
       
       // 检查源图像是否是有效的base64或URL
       let blob: Blob;
@@ -87,7 +91,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       // 创建 FormData
       const formData = new FormData();
       formData.append('image', blob, 'source.jpg');
-      formData.append('prompt', command);
+      formData.append('prompt', finalPrompt);
       formData.append('strength', '0.8');
       
       console.log('发送API请求到:', 'https://api.bfl.ai/v1/flux-kontext-pro');
@@ -100,7 +104,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: command,
+          prompt: finalPrompt,
           image: sourceImage,
           strength: 0.8,
           aspect_ratio: "1:1"
@@ -139,7 +143,8 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         apiKeyConfigured: !!apiKey,
         sourceImageType: sourceImage.startsWith('data:') ? 'base64' : 'url',
         sourceImageSize: sourceImage.length,
-        command: command,
+        originalCommand: command,
+        finalPrompt: finalPrompt,
         userAgent: navigator.userAgent,
         url: window.location.href
       };
@@ -237,13 +242,27 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
             />
           </div>
 
-          {/* 语音命令显示 */}
-          <Card className="p-4 bg-secondary/50">
-            <Label className="text-sm font-medium text-muted-foreground">
-              检测到的语音命令：
+          {/* 提示词输入区域 */}
+          <div className="space-y-3">
+            <Label htmlFor="prompt" className="text-sm font-medium">
+              AI 生成提示词
             </Label>
-            <p className="text-lg font-medium mt-1">{command}</p>
-          </Card>
+            {command && (
+              <p className="text-xs text-muted-foreground">
+                检测到的语音命令：{command}
+              </p>
+            )}
+            <textarea
+              id="prompt"
+              value={manualPrompt}
+              onChange={(e) => setManualPrompt(e.target.value)}
+              placeholder={command || "请输入图像生成提示词..."}
+              className="w-full min-h-[100px] p-3 rounded-md border border-border bg-background/50 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <p className="text-xs text-muted-foreground">
+              您可以编辑或重新输入提示词来指导 AI 图像生成
+            </p>
+          </div>
 
           {/* API 密钥状态 */}
           {apiKey ? (
