@@ -20,10 +20,24 @@ export const useRecorder = (): UseRecorderReturn => {
   const start = useCallback(async () => {
     try {
       setError(null);
+      console.log('Requesting camera and microphone access...');
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
+      console.log('Media stream obtained:', mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        console.log('Video element srcObject set');
+        
+        // Wait for video to load
+        await new Promise<void>((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = () => {
+              console.log('Video metadata loaded');
+              resolve();
+            };
+          }
+        });
       }
       
       setStream(mediaStream);
@@ -31,12 +45,23 @@ export const useRecorder = (): UseRecorderReturn => {
 
       // Start MediaRecorder
       mediaRecorderRef.current = new MediaRecorder(mediaStream);
+      console.log('MediaRecorder created');
+      
+      mediaRecorderRef.current.onstart = () => {
+        console.log('MediaRecorder started');
+      };
+      
+      mediaRecorderRef.current.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+      };
+      
       mediaRecorderRef.current.start();
+      console.log('Recording started');
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to access camera/microphone';
-      setError(errorMessage);
       console.error('Failed to start recording:', err);
+      setError(errorMessage);
     }
   }, []);
 
@@ -54,19 +79,25 @@ export const useRecorder = (): UseRecorderReturn => {
       setIsRecording(false);
 
       // Capture last frame
-      if (videoRef.current) {
+      if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
         if (ctx) {
           canvas.width = videoRef.current.videoWidth;
           canvas.height = videoRef.current.videoHeight;
+          console.log('Capturing frame with dimensions:', canvas.width, 'x', canvas.height);
+          
           ctx.drawImage(videoRef.current, 0, 0);
           
           const dataURL = canvas.toDataURL('image/png');
+          console.log('Frame captured, data URL length:', dataURL.length);
+          
           // Remove data:image/png;base64, prefix
           return dataURL.split(',')[1];
         }
+      } else {
+        console.error('Video element not ready for frame capture');
       }
 
       return null;

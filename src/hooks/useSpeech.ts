@@ -49,8 +49,10 @@ export const useSpeech = (): UseSpeechReturn => {
 
       // Update with final transcript if available, otherwise show interim
       if (finalTranscript) {
+        console.log('Final transcript:', finalTranscript);
         setTranscript(finalTranscript.trim());
       } else if (interimTranscript) {
+        console.log('Interim transcript:', interimTranscript);
         setTranscript(interimTranscript.trim());
       }
     };
@@ -74,16 +76,25 @@ export const useSpeech = (): UseSpeechReturn => {
   }, []);
 
   const start = useCallback(() => {
+    console.log('Starting speech recognition...');
     if (recognitionRef.current && !isListening) {
       setTranscript('');
       setError(null);
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+        console.log('Speech recognition started');
+      } catch (err) {
+        console.error('Failed to start speech recognition:', err);
+        setError('Failed to start speech recognition');
+      }
     }
   }, [isListening]);
 
   const stop = useCallback(() => {
+    console.log('Stopping speech recognition...');
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
+      console.log('Speech recognition stopped');
     }
   }, [isListening]);
 

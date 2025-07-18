@@ -18,6 +18,7 @@ export const Home: React.FC = () => {
   const { transcript, isListening, start: startSpeech, stop: stopSpeech, error: speechError } = useSpeech();
 
   const handleStartRecording = async () => {
+    console.log('Starting recording and speech recognition...');
     setGeneratedImageUrl(null);
     setApiError(null);
     await startRecording();
@@ -25,16 +26,21 @@ export const Home: React.FC = () => {
   };
 
   const handleStopRecording = async () => {
+    console.log('Stopping recording and speech recognition...');
     stopSpeech();
     const lastFrame = await stopRecording();
 
     if (!lastFrame) {
       setApiError('Failed to capture video frame');
+      console.error('No frame captured from video');
       return;
     }
 
+    console.log('Frame captured successfully, transcript:', transcript);
+
     if (!transcript.trim()) {
-      setApiError('No speech command detected');
+      setApiError('No speech command detected. Please speak clearly while recording.');
+      console.error('No transcript available');
       return;
     }
 
@@ -43,9 +49,12 @@ export const Home: React.FC = () => {
       return;
     }
 
+    console.log('Generating image with prompt:', transcript);
+
     setIsGenerating(true);
 
     try {
+      console.log('Sending request to Flux Kontext API...');
       const response = await fetch(FLUX_KONTEXT_API_URL, {
         method: 'POST',
         headers: {
@@ -58,14 +67,20 @@ export const Home: React.FC = () => {
         }),
       });
 
+      console.log('API response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
         throw new Error(`API request failed: ${response.statusText}`);
       }
 
       const data: FluxResponse = await response.json();
+      console.log('Image generated successfully:', data);
       setGeneratedImageUrl(data.generated_image_url);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Image generation failed:', error);
       setApiError(`Failed to generate image: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
