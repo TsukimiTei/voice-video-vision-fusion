@@ -29,20 +29,16 @@ export const useImageGeneration = () => {
       
       addLog("开始提交图像生成请求...");
       
-      // Step 1: Submit generation request
+      // Step 1: Submit generation request via Supabase Edge Function
       const submitResponse = await fetch(FLUX_KONTEXT_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-key': FLUX_KONTEXT_API_KEY,
-          'Accept': 'application/json',
         },
         body: JSON.stringify({
           prompt,
           image: imageBase64,
-          aspect_ratio: '1:1',
-          guidance: 3.5,
-          safety_tolerance: 2
+          aspect_ratio: '1:1'
         }),
       }).catch((networkError) => {
         addLog(`❌ 网络错误: ${networkError.message}`);
@@ -55,7 +51,7 @@ export const useImageGeneration = () => {
         let errorText;
         try {
           const errorJson = await submitResponse.json();
-          errorText = errorJson.error?.message || errorJson.message || `HTTP ${submitResponse.status}`;
+          errorText = errorJson.error || errorJson.details || `HTTP ${submitResponse.status}`;
         } catch {
           errorText = await submitResponse.text();
         }
@@ -77,78 +73,21 @@ export const useImageGeneration = () => {
       }
 
       const submitData = await submitResponse.json();
-      addLog(`✅ 请求成功提交，任务ID: ${submitData.id}`);
       
-      if (!submitData.id || !submitData.polling_url) {
-        addLog("❌ 响应格式错误: 缺少 id 或 polling_url");
-        addLog(`📋 收到的响应: ${JSON.stringify(submitData)}`);
-        throw new Error('服务器响应格式错误，请稍后重试');
+      if (submitData.success && submitData.imageUrl) {
+        addLog("✅ 图像生成完成！");
+        setResult({
+          imageUrl: submitData.imageUrl,
+          prompt
+        });
+        addLog("🎉 图像下载成功！");
+        return;
       }
-
-      addLog("开始轮询生成状态...");
-
-      // Step 2: Poll for results
-      const pollForResult = async (pollingUrl: string): Promise<any> => {
-        const maxAttempts = 120; // 60 seconds with 0.5s interval
-        
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 0.5s
-          
-          addLog(`🔄 轮询中 (${attempt + 1}/${maxAttempts})...`);
-          
-          const pollResponse = await fetch(pollingUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'x-key': FLUX_KONTEXT_API_KEY,
-            },
-          }).catch((networkError) => {
-            addLog(`❌ 轮询网络错误: ${networkError.message}`);
-            throw new Error(`轮询时网络连接失败: ${networkError.message}`);
-          });
-          
-          if (!pollResponse.ok) {
-            addLog(`❌ 轮询失败: ${pollResponse.status}`);
-            
-            if (pollResponse.status === 401) {
-              throw new Error('轮询时认证失败');
-            } else if (pollResponse.status === 404) {
-              throw new Error('任务未找到，可能已过期');
-            } else {
-              throw new Error(`轮询失败: HTTP ${pollResponse.status}`);
-            }
-          }
-          
-          const pollData = await pollResponse.json();
-          addLog(`📊 状态: ${pollData.status}`);
-          
-          if (pollData.status === 'Ready') {
-            addLog("✅ 图像生成完成！");
-            if (pollData.result && pollData.result.sample) {
-              return pollData.result.sample;
-            } else {
-              addLog("❌ 响应中缺少图像数据");
-              throw new Error('生成完成但缺少图像数据');
-            }
-          } else if (pollData.status === 'Error' || pollData.status === 'Failed') {
-            addLog(`❌ 生成失败: ${pollData.status}`);
-            const errorMessage = pollData.error?.message || pollData.failure_reason || '未知错误';
-            throw new Error(`图像生成失败: ${errorMessage}`);
-          }
-          // Continue polling if status is 'Pending' or other non-final status
-        }
-        
-        addLog("⏰ 生成超时");
-        throw new Error('图像生成超时，请稍后重试');
-      };
-
-      const imageUrl = await pollForResult(submitData.polling_url);
       
-      setResult({
-        imageUrl,
-        prompt
-      });
-      addLog("🎉 图像下载成功！");
+      if (!submitData.success) {
+        addLog("❌ 图像生成失败");
+        throw new Error(submitData.error || '图像生成失败');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate image';
       addLog(`❌ 错误: ${errorMessage}`);
