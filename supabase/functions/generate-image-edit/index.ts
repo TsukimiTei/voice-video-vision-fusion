@@ -13,11 +13,11 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, image, aspect_ratio = '1:1' } = await req.json();
+    const { prompt, input_image, aspect_ratio = '1:1' } = await req.json();
     
-    if (!prompt || !image) {
+    if (!prompt || !input_image) {
       return new Response(
-        JSON.stringify({ error: 'Missing prompt or image' }),
+        JSON.stringify({ error: 'Missing prompt or input_image' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -26,10 +26,10 @@ serve(async (req) => {
     }
 
     // Clean the image data - BFL API expects pure base64 without data URL prefix
-    let cleanImageData = image;
-    if (image.includes('data:image')) {
+    let cleanImageData = input_image;
+    if (input_image.includes('data:image')) {
       // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
-      cleanImageData = image.split(',')[1];
+      cleanImageData = input_image.split(',')[1];
     }
     
     console.log('Request details:', {
