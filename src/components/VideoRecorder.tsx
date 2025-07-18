@@ -11,7 +11,11 @@ import { toast } from 'sonner';
 
 type ViewState = 'home' | 'recording' | 'result';
 
-export const VideoRecorder = () => {
+interface VideoRecorderProps {
+  onBack?: () => void;
+}
+
+export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const { isRecording, videoRef, startCamera, stopCamera, error: cameraError } = useCamera();
   const { 
@@ -68,6 +72,20 @@ export const VideoRecorder = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="p-8 max-w-md w-full text-center space-y-6">
+          {onBack && (
+            <div className="flex justify-start">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={onBack}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                返回首页
+              </Button>
+            </div>
+          )}
+          
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-foreground">AI 视频生成器</h1>
             <p className="text-muted-foreground">
