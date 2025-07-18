@@ -51,7 +51,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       console.log('最终提示词:', finalPrompt);
       console.log('源图像类型:', sourceImage.startsWith('data:') ? 'base64' : 'url');
       
-      // Extract base64 data from data URL
+      // Extract and validate base64 data from data URL
       let base64Data = sourceImage;
       if (sourceImage.startsWith('data:')) {
         const base64Index = sourceImage.indexOf(',');
@@ -60,7 +60,24 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         }
       }
       
+      console.log('原始图像长度:', sourceImage.length);
       console.log('处理后的base64数据长度:', base64Data.length);
+      console.log('Base64开头:', base64Data.substring(0, 50));
+      
+      // Validate base64 format
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Regex.test(base64Data)) {
+        throw new Error('无效的base64格式');
+      }
+      
+      // Try to validate base64 by attempting to decode it
+      try {
+        atob(base64Data);
+      } catch (e) {
+        throw new Error('Base64数据无法解码');
+      }
+      
+      console.log('Base64验证通过');
       
       // Call Supabase Edge Function instead of BFL API directly
       const response = await fetch('/functions/v1/generate-image', {
