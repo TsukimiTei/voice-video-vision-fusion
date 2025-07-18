@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw, SwitchCamera, X, Download } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useImageGeneration } from '../hooks/useImageGeneration';
 import { useTranslation } from '../hooks/useTranslation';
-import { captureVideoFrame } from '../utils/videoUtils';
+import { captureVideoFrame, downloadImage } from '../utils/videoUtils';
 import { toast } from 'sonner';
 
 type ViewState = 'home' | 'recording' | 'result';
@@ -18,7 +18,7 @@ interface VideoRecorderProps {
 
 export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const [viewState, setViewState] = useState<ViewState>('home');
-  const { isRecording, videoRef, startCamera, stopCamera, error: cameraError } = useCamera();
+  const { isRecording, videoRef, startCamera, stopCamera, switchCamera, facingMode, error: cameraError } = useCamera();
   const { 
     isListening, 
     transcript, 
@@ -76,6 +76,24 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const handleTryAgain = () => {
     setViewState('home');
     resetTranscript();
+  };
+
+  const handleCancelRecording = () => {
+    stopListening();
+    stopCamera();
+    setViewState('home');
+    resetTranscript();
+  };
+
+  const handleDownloadImage = async () => {
+    if (result?.imageUrl) {
+      try {
+        await downloadImage(result.imageUrl, `ai-generated-${Date.now()}.jpg`);
+        toast.success('Image downloaded successfully');
+      } catch (error) {
+        toast.error('Failed to download image');
+      }
+    }
   };
 
   // 主页
@@ -172,6 +190,15 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
                 </Button>
                 
                 <Button 
+                  onClick={handleDownloadImage}
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+                
+                <Button 
                   onClick={handleBackToHome}
                   className="flex-1"
                 >
@@ -230,16 +257,37 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
         {/* Top Bar - Speech Status */}
         <div className="p-4 bg-black/20 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <Badge variant={isListening ? "default" : "secondary"} className="gap-2">
-              {isListening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-              {isListening ? 'Listening...' : 'Speech Stopped'}
-            </Badge>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleCancelRecording}
+              className="text-white hover:bg-white/20"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
             
-            {isRecording && (
-              <Badge variant="destructive" className="animate-pulse">
-                ● Recording
+            <div className="flex items-center gap-3">
+              <Badge variant={isListening ? "default" : "secondary"} className="gap-2">
+                {isListening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+                {isListening ? 'Listening...' : 'Speech Stopped'}
               </Badge>
-            )}
+              
+              {isRecording && (
+                <Badge variant="destructive" className="animate-pulse">
+                  ● Recording
+                </Badge>
+              )}
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={switchCamera}
+              className="text-white hover:bg-white/20"
+            >
+              <SwitchCamera className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 

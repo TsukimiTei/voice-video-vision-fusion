@@ -21,11 +21,32 @@ export const captureVideoFrame = (video: HTMLVideoElement): string | null => {
   }
 };
 
-export const getMediaConstraints = (): MediaStreamConstraints => ({
+export const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user'): MediaStreamConstraints => ({
   video: {
     width: { ideal: 1280 },
     height: { ideal: 720 },
-    facingMode: 'user'
+    facingMode: facingMode
   },
   audio: true
 });
+
+// Function to download image to device
+export const downloadImage = async (imageUrl: string, filename: string = 'ai-generated-image.jpg') => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    
+    // Create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to download image:', error);
+    throw error;
+  }
+};
