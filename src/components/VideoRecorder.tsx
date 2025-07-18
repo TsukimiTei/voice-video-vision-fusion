@@ -38,7 +38,8 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
   // Monitor generation state and set timeout
   useEffect(() => {
-    if (isGenerating && viewState === 'result') {
+    if (isGenerating) {
+      console.log('Generation started, setting timeout...');
       // Clear any existing timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -46,11 +47,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
       
       // Set new timeout for 10 seconds
       timeoutRef.current = setTimeout(() => {
+        console.log('Timeout triggered, isGenerating:', isGenerating);
         if (isGenerating) {
           setShowTimeoutDialog(true);
         }
       }, 10000);
     } else {
+      console.log('Generation stopped, clearing timeout...');
       // Clear timeout when generation completes or state changes
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -64,7 +67,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isGenerating, viewState]);
+  }, [isGenerating]);
 
   const handleStartRecording = async () => {
     setViewState('recording');
@@ -133,6 +136,18 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
     setViewState('home');
     resetTranscript();
     stopCamera();
+  };
+
+  const handleCancelGeneration = () => {
+    // Clear any running timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    setViewState('home');
+    resetTranscript();
+    toast.success('生成已取消');
   };
 
   const handleCancelRecording = () => {
@@ -269,6 +284,16 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               <div className="text-center space-y-4">
                 <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
                 <p className="text-muted-foreground">Generating image, please wait...</p>
+                
+                {/* Cancel Generation Button */}
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelGeneration}
+                  className="mt-4"
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  取消生成
+                </Button>
               </div>
               
               {/* API 调用明细 */}
