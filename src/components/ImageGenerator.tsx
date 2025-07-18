@@ -37,15 +37,28 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
     setIsGenerating(true);
     
     try {
+      console.log('开始图像生成，API Key:', apiKey ? 'API Key已设置' : '未设置API Key');
+      console.log('源图像URL:', sourceImage);
+      console.log('语音命令:', command);
+      
       // 将 base64 图像转换为 Blob
       const response = await fetch(sourceImage);
+      console.log('图像fetch响应状态:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`获取源图像失败: ${response.status}`);
+      }
+      
       const blob = await response.blob();
+      console.log('图像Blob大小:', blob.size, 'bytes');
       
       // 创建 FormData
       const formData = new FormData();
       formData.append('image', blob, 'source.jpg');
       formData.append('prompt', command);
       formData.append('strength', '0.8');
+      
+      console.log('发送API请求到:', 'https://api.fluxkontext.com/v1/image-to-image');
       
       // 调用 Flux Kontext API
       const apiResponse = await fetch('https://api.fluxkontext.com/v1/image-to-image', {
@@ -56,21 +69,36 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         body: formData,
       });
 
+      console.log('API响应状态:', apiResponse.status);
+      console.log('API响应headers:', Object.fromEntries(apiResponse.headers.entries()));
+
       if (!apiResponse.ok) {
-        throw new Error(`API 请求失败: ${apiResponse.status}`);
+        const errorText = await apiResponse.text();
+        console.error('API错误响应:', errorText);
+        throw new Error(`API 请求失败: ${apiResponse.status} - ${errorText}`);
       }
 
       const result = await apiResponse.json();
+      console.log('API响应数据:', result);
       
       if (result.image_url) {
         onResult(result.image_url);
         toast.success('图像生成成功！');
       } else {
+        console.error('API响应结构:', result);
         throw new Error('API 响应中未找到图像 URL');
       }
     } catch (error) {
-      console.error('图像生成失败:', error);
-      toast.error('图像生成失败，请检查 API 密钥和网络连接');
+      console.error('图像生成详细错误:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast.error('网络连接失败，请检查网络状态');
+      } else if (error.message.includes('401')) {
+        toast.error('API 密钥无效，请检查密钥是否正确');
+      } else if (error.message.includes('429')) {
+        toast.error('API 请求频率过高，请稍后重试');
+      } else {
+        toast.error(`图像生成失败: ${error.message}`);
+      }
     } finally {
       setIsGenerating(false);
     }
