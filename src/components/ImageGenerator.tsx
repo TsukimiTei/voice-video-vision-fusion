@@ -79,6 +79,19 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       
       console.log('Base64验证通过');
       
+      let requestBody;
+      try {
+        requestBody = JSON.stringify({
+          prompt: finalPrompt,
+          image: base64Data,
+          strength: 0.8,
+          aspect_ratio: "1:1"
+        });
+        console.log('JSON序列化成功，请求体长度:', requestBody.length);
+      } catch (e) {
+        throw new Error('JSON序列化失败: ' + e.message);
+      }
+      
       // Call Supabase Edge Function instead of BFL API directly
       const response = await fetch('/functions/v1/generate-image', {
         method: 'POST',
@@ -86,12 +99,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
         },
-        body: JSON.stringify({
-          prompt: finalPrompt,
-          image: base64Data,
-          strength: 0.8,
-          aspect_ratio: "1:1"
-        }),
+        body: requestBody,
       });
 
       console.log('Edge Function 响应状态:', response.status);

@@ -139,7 +139,22 @@ export const CameraInterface: React.FC<CameraInterfaceProps> = ({ onGenerateImag
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
     
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    let imageData;
+    try {
+      imageData = canvas.toDataURL('image/jpeg', 0.8);
+      console.log('生成的图像数据长度:', imageData.length);
+      console.log('图像数据开头:', imageData.substring(0, 50));
+      
+      // 验证生成的数据URL格式
+      if (!imageData.startsWith('data:image/')) {
+        throw new Error('生成的不是有效的图像数据URL');
+      }
+      
+    } catch (error) {
+      console.error('toDataURL失败:', error);
+      toast.error('图像捕获失败，请重试');
+      return;
+    }
     
     // 总是进入下一步，即使没有语音输入
     onGenerateImage(imageData, speechText || '');
