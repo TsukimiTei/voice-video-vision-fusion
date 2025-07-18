@@ -20,50 +20,77 @@ export const useRecorder = (): UseRecorderReturn => {
   const start = useCallback(async () => {
     try {
       setError(null);
-      console.log('Requesting camera and microphone access...');
+      console.log('🎥 Requesting camera and microphone access...');
       
       const mediaStream = await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
-      console.log('Media stream obtained:', mediaStream);
+      console.log('✅ Media stream obtained:', mediaStream.getTracks().map(track => ({ kind: track.kind, enabled: track.enabled })));
+      
+      setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        console.log('Video element srcObject set');
+        console.log('📺 Video element srcObject set');
         
-        // Wait for video to load
-        await new Promise<void>((resolve) => {
+        // Wait for video to load and play
+        await new Promise<void>((resolve, reject) => {
           if (videoRef.current) {
-            videoRef.current.onloadedmetadata = () => {
-              console.log('Video metadata loaded');
-              resolve();
+            const video = videoRef.current;
+            
+            const onLoadedMetadata = () => {
+              console.log('📊 Video metadata loaded, dimensions:', video.videoWidth, 'x', video.videoHeight);
+              video.play().then(() => {
+                console.log('▶️ Video playback started');
+                resolve();
+              }).catch(reject);
             };
+            
+            const onError = (e: Event) => {
+              console.error('❌ Video loading error:', e);
+              reject(new Error('Video loading failed'));
+            };
+            
+            video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+            video.addEventListener('error', onError, { once: true });
+            
+            // Cleanup listeners after 5 seconds
+            setTimeout(() => {
+              video.removeEventListener('loadedmetadata', onLoadedMetadata);
+              video.removeEventListener('error', onError);
+            }, 5000);
           }
         });
       }
       
-      setStream(mediaStream);
       setIsRecording(true);
 
       // Start MediaRecorder
       mediaRecorderRef.current = new MediaRecorder(mediaStream);
-      console.log('MediaRecorder created');
+      console.log('🎬 MediaRecorder created');
       
       mediaRecorderRef.current.onstart = () => {
-        console.log('MediaRecorder started');
+        console.log('🔴 MediaRecorder started');
       };
       
       mediaRecorderRef.current.onerror = (event) => {
-        console.error('MediaRecorder error:', event);
+        console.error('❌ MediaRecorder error:', event);
       };
       
       mediaRecorderRef.current.start();
-      console.log('Recording started');
+      console.log('🎯 Recording started successfully');
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to access camera/microphone';
-      console.error('Failed to start recording:', err);
+      console.error('💥 Failed to start recording:', err);
       setError(errorMessage);
+      
+      // Clean up partial state
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      setIsRecording(false);
     }
-  }, []);
+  }, [stream]);
 
   const stop = useCallback(async (): Promise<string | null> => {
     try {
