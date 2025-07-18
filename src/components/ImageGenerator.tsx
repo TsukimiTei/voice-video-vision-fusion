@@ -34,22 +34,53 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       return;
     }
 
+    if (!sourceImage) {
+      toast.error('未找到源图像');
+      return;
+    }
+
+    if (!command) {
+      toast.error('未找到语音命令');
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
-      console.log('开始图像生成，API Key:', apiKey ? 'API Key已设置' : '未设置API Key');
+      console.log('开始图像生成...');
+      console.log('API Key状态:', apiKey ? '已设置' : '未设置');
       console.log('源图像URL:', sourceImage);
       console.log('语音命令:', command);
       
-      // 将 base64 图像转换为 Blob
-      const response = await fetch(sourceImage);
-      console.log('图像fetch响应状态:', response.status);
+      // 检查源图像是否是有效的base64或URL
+      let blob: Blob;
       
-      if (!response.ok) {
-        throw new Error(`获取源图像失败: ${response.status}`);
+      if (sourceImage.startsWith('data:')) {
+        // 如果是base64图像，直接转换
+        console.log('处理base64图像...');
+        const response = await fetch(sourceImage);
+        if (!response.ok) {
+          throw new Error(`无法处理base64图像: ${response.status}`);
+        }
+        blob = await response.blob();
+      } else {
+        // 如果是URL，需要添加CORS处理
+        console.log('处理URL图像...');
+        const response = await fetch(sourceImage, {
+          mode: 'cors',
+          headers: {
+            'Accept': 'image/*'
+          }
+        });
+        
+        console.log('图像fetch响应状态:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`获取源图像失败: ${response.status}`);
+        }
+        
+        blob = await response.blob();
       }
-      
-      const blob = await response.blob();
       console.log('图像Blob大小:', blob.size, 'bytes');
       
       // 创建 FormData
