@@ -1,322 +1,158 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Wand2, Copy, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Wand2, AlertCircle } from 'lucide-react';
+import { useImageGeneration } from '@/hooks/useImageGeneration';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ImageGeneratorProps {
   sourceImage: string;
   command: string;
   onResult: (resultImage: string) => void;
+  onBack: () => void;
 }
 
 export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   sourceImage,
   command,
-  onResult
+  onResult,
+  onBack
 }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [errorLog, setErrorLog] = useState<string | null>(null);
   const [manualPrompt, setManualPrompt] = useState('');
+  const { generateImage, isGenerating, error } = useImageGeneration();
 
-  // 初始化手动提示词为语音命令
-  React.useEffect(() => {
+  useEffect(() => {
     setManualPrompt(command);
   }, [command]);
 
-  const generateImage = async () => {
+  const handleGenerate = async () => {
     const finalPrompt = manualPrompt.trim() || command;
-    if (!finalPrompt) {
-      toast.error('请输入提示词或语音命令');
-      return;
-    }
-
-    if (!sourceImage) {
-      toast.error('未找到源图像');
-      return;
-    }
-
-    setIsGenerating(true);
     
-    try {
-      console.log('开始图像生成...');
-      console.log('最终提示词:', finalPrompt);
-      console.log('源图像类型:', sourceImage.startsWith('data:') ? 'base64' : 'url');
-      
-      // 强化的base64数据处理和验证
-      console.log('开始处理图像数据...');
-      console.log('原始图像数据长度:', sourceImage.length);
-      console.log('原始图像数据开头:', sourceImage.substring(0, 100));
-      
-      let base64Data: string;
-      
-      try {
-        // 提取base64数据
-        if (sourceImage.startsWith('data:')) {
-          const commaIndex = sourceImage.indexOf(',');
-          if (commaIndex === -1) {
-            throw new Error('Data URL格式无效：缺少逗号分隔符');
-          }
-          base64Data = sourceImage.substring(commaIndex + 1);
-        } else {
-          base64Data = sourceImage;
-        }
-        
-        console.log('提取的base64数据长度:', base64Data.length);
-        console.log('Base64数据开头:', base64Data.substring(0, 50));
-        
-        // 清理base64字符串：移除空格、换行符等非base64字符
-        base64Data = base64Data.replace(/\s/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
-        
-        // 确保base64字符串长度是4的倍数
-        while (base64Data.length % 4 !== 0) {
-          base64Data += '=';
-        }
-        
-        console.log('清理后的base64数据长度:', base64Data.length);
-        
-        // 验证base64格式
-        if (!base64Data || base64Data.length === 0) {
-          throw new Error('Base64数据为空');
-        }
-        
-        // 使用正则验证base64格式
-        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Data)) {
-          throw new Error('Base64数据包含无效字符');
-        }
-        
-        // 尝试解码验证（这是最可能出错的地方）
-        try {
-          const decodedData = atob(base64Data);
-          if (decodedData.length === 0) {
-            throw new Error('解码后的数据为空');
-          }
-          console.log('Base64解码成功，解码数据长度:', decodedData.length);
-        } catch (decodeError) {
-          console.error('atob解码失败:', decodeError);
-          throw new Error(`Base64解码失败: ${decodeError.message}`);
-        }
-        
-        console.log('Base64验证完全通过');
-        
-      } catch (processingError) {
-        console.error('Base64处理错误:', processingError);
-        const errorMsg = processingError instanceof Error ? processingError.message : 'Base64处理失败';
-        throw new Error(`图像数据处理失败: ${errorMsg}`);
-      }
-      
-      let requestBody;
-      try {
-        requestBody = JSON.stringify({
-          prompt: finalPrompt,
-          image: base64Data,
-          strength: 0.8,
-          aspect_ratio: "1:1"
-        });
-        console.log('JSON序列化成功，请求体长度:', requestBody.length);
-      } catch (e) {
-        throw new Error('JSON序列化失败: ' + e.message);
-      }
-      
-      // Call Supabase Edge Function instead of BFL API directly
-      const response = await fetch('/functions/v1/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
-        },
-        body: requestBody,
-      });
-
-      console.log('Edge Function 响应状态:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Edge Function 错误:', errorData);
-        throw new Error(`服务器错误: ${response.status} - ${errorData.error || 'Unknown error'}`);
-      }
-
-      const result = await response.json();
-      console.log('Edge Function 响应:', result);
-      
-      if (result.success && result.data) {
-        onResult(result.data);
-        toast.success('图像生成完成！');
-      } else {
-        throw new Error(result.error || '图像生成失败');
-      }
-    } catch (error) {
-      console.error('图像生成详细错误:', error);
-      
-      // 生成详细错误日志
-      const errorDetails = {
-        timestamp: new Date().toISOString(),
-        errorType: error.constructor.name,
-        errorMessage: error.message,
-        errorStack: error.stack,
-        sourceImageType: sourceImage.startsWith('data:') ? 'base64' : 'url',
-        sourceImageSize: sourceImage.length,
-        originalCommand: command,
-        finalPrompt: finalPrompt,
-        userAgent: navigator.userAgent,
-        url: window.location.href
-      };
-      
-      const errorLogString = JSON.stringify(errorDetails, null, 2);
-      setErrorLog(errorLogString);
-      console.error('完整错误日志:', errorLogString);
-      
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast.error('网络连接失败，请检查网络状态或联系技术支持');
-      } else if (error.message.includes('401')) {
-        toast.error('认证失败，请检查配置');
-      } else if (error.message.includes('429')) {
-        toast.error('API 请求频率过高，请稍后重试');
-      } else {
-        toast.error(`图像生成失败: ${error.message}`);
-      }
-    } finally {
-      setIsGenerating(false);
+    if (!finalPrompt) {
+      return;
     }
-  };
 
-  const copyErrorLog = async () => {
-    if (errorLog) {
-      try {
-        await navigator.clipboard.writeText(errorLog);
-        toast.success('错误日志已复制到剪贴板');
-      } catch (err) {
-        toast.error('复制失败，请手动复制');
-      }
+    try {
+      const result = await generateImage(sourceImage, finalPrompt);
+      onResult(result);
+    } catch (error) {
+      // 错误已在 hook 中处理
+      console.error('Generation failed:', error);
     }
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 space-y-6">
-      <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50">
-        <div className="space-y-4">
-          <div className="text-center">
-            <h3 className="text-xl font-semibold mb-2">AI 图像生成</h3>
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+      <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
+
+      {/* 返回按钮 */}
+      <div className="absolute top-6 left-6 z-20">
+        <Button
+          onClick={onBack}
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-primary"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <Card className="relative z-10 p-6 bg-card/50 backdrop-blur-xl border-border/50 max-w-2xl w-full">
+        <div className="space-y-6">
+          {/* 标题 */}
+          <div className="text-center space-y-2">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-primary to-primary-glow rounded-full flex items-center justify-center shadow-glow">
+              <Wand2 className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+              AI 图像生成
+            </h2>
             <p className="text-muted-foreground">
-              基于截取的画面和语音命令生成新图像
+              基于您的图像和指令，生成全新的创意作品
             </p>
           </div>
 
           {/* 原始图像预览 */}
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-            <img
-              src={sourceImage}
-              alt="原始画面"
-              className="w-full h-full object-cover"
-            />
+          <div className="space-y-2">
+            <Label>原始图像</Label>
+            <div className="relative w-full h-48 bg-muted rounded-lg overflow-hidden">
+              <img
+                src={sourceImage}
+                alt="Original"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
 
-          {/* 提示词输入区域 */}
-          <div className="space-y-3">
-            <Label htmlFor="prompt" className="text-sm font-medium">
-              AI 生成提示词 {!command && <span className="text-primary">*</span>}
-            </Label>
-            {command ? (
-              <Card className="p-3 bg-secondary/50">
-                <p className="text-xs text-muted-foreground mb-2">
-                  检测到的语音命令：
-                </p>
-                <p className="text-sm font-medium">{command}</p>
-              </Card>
-            ) : (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  ⚠️ 未检测到语音命令，请手动输入提示词
-                </p>
+          {/* 语音命令显示 */}
+          {command && (
+            <div className="space-y-2">
+              <Label>识别的语音命令</Label>
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-blue-700 dark:text-blue-300 font-medium">"{command}"</p>
               </div>
-            )}
-            <textarea
+            </div>
+          )}
+
+          {/* 手动输入提示词 */}
+          <div className="space-y-2">
+            <Label htmlFor="prompt">生成提示词</Label>
+            <Textarea
               id="prompt"
+              placeholder="请输入您希望生成的图像描述..."
               value={manualPrompt}
               onChange={(e) => setManualPrompt(e.target.value)}
-              placeholder={command ? "您可以编辑语音命令或输入新的提示词..." : "请输入图像生成提示词，例如：把天空变成夜晚、添加彩虹、改变颜色等..."}
-              className={`w-full min-h-[120px] p-3 rounded-md border resize-none focus:outline-none focus:ring-2 transition-all ${
-                !command && !manualPrompt.trim() 
-                  ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10 focus:ring-amber-400' 
-                  : 'border-border bg-background/50 focus:ring-primary'
-              }`}
+              className="min-h-[100px] bg-background/50"
             />
             <p className="text-xs text-muted-foreground">
-              {command 
-                ? "您可以编辑或重新输入提示词来指导 AI 图像生成" 
-                : "请描述您希望如何修改图片，AI 将根据您的描述生成新图像"
-              }
+              例如：换一个颜色、变成卡通风格、添加花朵装饰等
             </p>
           </div>
 
-          {/* 提示说明 */}
+          {/* 错误显示 */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* 使用说明 */}
           <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
             <div className="text-sm space-y-2">
               <p className="text-blue-700 dark:text-blue-300 font-medium">
                 📋 使用说明：
               </p>
               <p className="text-blue-600 dark:text-blue-400">
-                该功能使用 Supabase 后端处理图像生成，无需额外配置 API 密钥。
+                该功能使用 Supabase 后端处理图像生成，基于您的原始图像和提示词创建新的艺术作品。
               </p>
             </div>
           </Card>
 
           {/* 生成按钮 */}
           <Button
-            onClick={generateImage}
+            onClick={handleGenerate}
             disabled={isGenerating || !manualPrompt.trim()}
-            className="w-full bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300"
-            size="lg"
+            className="w-full bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300 text-lg py-6"
           >
             {isGenerating ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
                 生成中...
               </>
             ) : (
               <>
                 <Wand2 className="w-5 h-5 mr-2" />
-                生成 AI 图像
+                开始生成
               </>
             )}
           </Button>
-
-          {/* 错误日志显示 */}
-          {errorLog && (
-            <Card className="p-4 bg-destructive/10 border-destructive/20">
-              <div className="flex items-start justify-between mb-2">
-                <Label className="text-sm font-medium text-destructive">
-                  错误详情日志
-                </Label>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyErrorLog}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setErrorLog(null)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <pre className="text-xs bg-background/50 p-3 rounded-md overflow-x-auto max-h-40 overflow-y-auto border">
-                {errorLog}
-              </pre>
-              <p className="text-xs text-muted-foreground mt-2">
-                点击复制按钮将错误日志复制到剪贴板，以便技术支持分析
-              </p>
-            </Card>
-          )}
         </div>
       </Card>
     </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Camera } from 'lucide-react';
-import { CameraInterface } from '@/components/CameraInterface';
+import { CameraCapture } from '@/components/CameraCapture';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { ResultDisplay } from '@/components/ResultDisplay';
 import { toast } from 'sonner';
@@ -96,19 +96,18 @@ const Index = () => {
 
   // 摄像界面
   if (currentState === 'camera') {
-    return <CameraInterface onGenerateImage={handleImageCapture} />;
+    return <CameraCapture onCapture={handleImageCapture} onBack={handleBackToHome} />;
   }
 
   // 图像生成界面
   if (currentState === 'generate') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <ImageGenerator
-          sourceImage={capturedImage}
-          command={speechCommand}
-          onResult={handleImageGenerated}
-        />
-      </div>
+      <ImageGenerator
+        sourceImage={capturedImage}
+        command={speechCommand}
+        onResult={handleImageGenerated}
+        onBack={handleBackToHome}
+      />
     );
   }
 
