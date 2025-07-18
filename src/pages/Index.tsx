@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Camera, Sparkles } from 'lucide-react';
+import { Camera, Settings } from 'lucide-react';
 import { CameraInterface } from '@/components/CameraInterface';
 import { ImageGenerator } from '@/components/ImageGenerator';
 import { ResultDisplay } from '@/components/ResultDisplay';
+import { SettingsPage } from '@/components/SettingsPage';
 import { toast } from 'sonner';
 
-type AppState = 'home' | 'camera' | 'generate' | 'result';
+type AppState = 'home' | 'camera' | 'generate' | 'result' | 'settings';
 
 const Index = () => {
   const [currentState, setCurrentState] = useState<AppState>('home');
@@ -37,6 +38,10 @@ const Index = () => {
     setGeneratedImage('');
   };
 
+  const handleOpenSettings = () => {
+    setCurrentState('settings');
+  };
+
   // 主页面
   if (currentState === 'home') {
     return (
@@ -48,6 +53,18 @@ const Index = () => {
         
         <Card className="relative z-10 p-8 bg-card/50 backdrop-blur-xl border-border/50 max-w-md w-full mx-6">
           <div className="text-center space-y-6">
+            {/* 右上角设置按钮 */}
+            <div className="absolute top-4 right-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleOpenSettings}
+                className="text-muted-foreground hover:text-primary"
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+            </div>
+
             <div className="mx-auto w-20 h-20 bg-gradient-to-r from-primary to-primary-glow rounded-full flex items-center justify-center shadow-glow">
               <Camera className="w-10 h-10 text-primary-foreground" />
             </div>
@@ -122,6 +139,11 @@ const Index = () => {
         onBack={handleBackToHome}
       />
     );
+  }
+
+  // 设置页面
+  if (currentState === 'settings') {
+    return <SettingsPage onBack={handleBackToHome} />;
   }
 
   return null;

@@ -20,6 +20,14 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [apiKey, setApiKey] = useState('');
 
+  // 从 localStorage 加载 API key
+  React.useEffect(() => {
+    const savedApiKey = localStorage.getItem('flux-kontext-api-key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
   const generateImage = async () => {
     if (!apiKey) {
       toast.error('请输入 Flux Kontext API 密钥');
