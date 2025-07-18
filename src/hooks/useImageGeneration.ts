@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GeneratedImageResult } from '../types';
-import { FLUX_KONTEXT_API_URL, FLUX_KONTEXT_API_KEY } from '../constants';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useImageGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -30,52 +30,20 @@ export const useImageGeneration = () => {
       addLog("开始提交图像生成请求...");
       
       // Step 1: Submit generation request via Supabase Edge Function
-      const submitResponse = await fetch(FLUX_KONTEXT_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-image-edit', {
+        body: {
           prompt,
           image: imageBase64,
           aspect_ratio: '1:1'
-        }),
-      }).catch((networkError) => {
-        addLog(`❌ 网络错误: ${networkError.message}`);
-        throw new Error(`网络连接失败: ${networkError.message}. 请检查网络连接或稍后重试。`);
+        }
       });
 
-      addLog(`📡 收到响应状态: ${submitResponse.status}`);
-
-      if (!submitResponse.ok) {
-        let errorText;
-        try {
-          // Clone the response to avoid "body stream already read" error
-          const responseClone = submitResponse.clone();
-          const errorJson = await responseClone.json();
-          errorText = errorJson.error || errorJson.details || `HTTP ${submitResponse.status}`;
-        } catch {
-          const errorText2 = await submitResponse.text();
-          errorText = errorText2;
-        }
-        
-        addLog(`❌ 请求失败: ${submitResponse.status} - ${errorText}`);
-        
-        // 根据错误码提供具体的错误信息
-        if (submitResponse.status === 401) {
-          throw new Error('API 密钥无效，请检查配置');
-        } else if (submitResponse.status === 402) {
-          throw new Error('余额不足，请充值后重试');
-        } else if (submitResponse.status === 429) {
-          throw new Error('请求过于频繁，请稍后重试');
-        } else if (submitResponse.status === 400) {
-          throw new Error(`请求参数错误: ${errorText}`);
-        } else {
-          throw new Error(`API 请求失败 (${submitResponse.status}): ${errorText}`);
-        }
+      if (submitError) {
+        addLog(`❌ Supabase 函数调用失败: ${submitError.message}`);
+        throw new Error(`API 调用失败: ${submitError.message}`);
       }
 
-      const submitData = await submitResponse.json();
+      addLog(`📡 收到 Edge Function 响应`);
       
       if (submitData.success && submitData.imageUrl) {
         addLog("✅ 图像生成完成！");
