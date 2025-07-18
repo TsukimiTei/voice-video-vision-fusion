@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -21,6 +21,8 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const [isRecordingActive, setIsRecordingActive] = useState(false);
   const [showNSFWDialog, setShowNSFWDialog] = useState(false);
+  const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { isRecording, videoRef, startCamera, stopCamera, switchCamera, facingMode, error: cameraError } = useCamera();
   const { 
     isListening, 
@@ -33,6 +35,36 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   } = useSpeechRecognition();
   const { generateImage, isGenerating, result, error: imageError, statusLog } = useImageGeneration();
   // const { translateToEnglish, isTranslating } = useTranslation();
+
+  // Monitor generation state and set timeout
+  useEffect(() => {
+    if (isGenerating && viewState === 'result') {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Set new timeout for 10 seconds
+      timeoutRef.current = setTimeout(() => {
+        if (isGenerating) {
+          setShowTimeoutDialog(true);
+        }
+      }, 10000);
+    } else {
+      // Clear timeout when generation completes or state changes
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isGenerating, viewState]);
 
   const handleStartRecording = async () => {
     setViewState('recording');
@@ -91,6 +123,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
   const handleNSFWDialogConfirm = () => {
     setShowNSFWDialog(false);
+    setViewState('home');
+    resetTranscript();
+    stopCamera();
+  };
+
+  const handleTimeoutDialogConfirm = () => {
+    setShowTimeoutDialog(false);
     setViewState('home');
     resetTranscript();
     stopCamera();
@@ -400,6 +439,23 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           <AlertDialogFooter>
             <AlertDialogAction onClick={handleNSFWDialogConfirm}>
               确认重新拍摄
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Generation Timeout Dialog */}
+      <AlertDialog open={showTimeoutDialog} onOpenChange={setShowTimeoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>生成无响应</AlertDialogTitle>
+            <AlertDialogDescription>
+              图像生成已超过10秒无响应，请重新进行录制。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleTimeoutDialogConfirm}>
+              确认重新录制
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
