@@ -1,2 +1,2 @@
 // Speech Recognition
-export const SPEECH_LANG = 'zh-CN';
+export const SPEECH_LANG = 'en-US';

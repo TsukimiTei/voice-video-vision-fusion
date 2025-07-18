@@ -48,19 +48,19 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           // toast.success('正在翻译指令...');
           // const englishPrompt = await translateToEnglish(finalTranscript);
           
-          toast.success('正在生成图像...');
+          toast.success('Generating image...');
           await generateImage(frameBase64, finalTranscript);
           setViewState('result');
         } catch (error) {
           console.error('Generation error:', error);
-          toast.error('处理失败，请重试');
+          toast.error('Processing failed, please try again');
           setViewState('home');
         }
       } else if (!finalTranscript) {
-        toast.error('未检测到语音指令');
+        toast.error('No voice command detected');
         setViewState('home');
       } else {
-        toast.error('无法截取视频帧');
+        toast.error('Cannot capture video frame');
         setViewState('home');
       }
     }
@@ -92,15 +92,15 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                返回首页
+                Back to Home
               </Button>
             </div>
           )}
           
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-foreground">AI 视频生成器</h1>
+            <h1 className="text-2xl font-bold text-foreground">AI Video Generator</h1>
             <p className="text-muted-foreground">
-              录制视频并说出指令，AI将基于视频最后一帧和语音指令生成新图像
+              Record video and speak commands in English. AI will generate new images based on the last frame and voice commands.
             </p>
           </div>
           
@@ -110,7 +110,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
             className="w-full"
           >
             <Camera className="mr-2 h-5 w-5" />
-            开始录制
+            Start Recording
           </Button>
         </Card>
       </div>
@@ -130,10 +130,10 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              返回
+              Back
             </Button>
             
-            <h2 className="text-xl font-bold text-foreground">生成结果</h2>
+            <h2 className="text-xl font-bold text-foreground">Generation Result</h2>
             
             <Button 
               variant="outline" 
@@ -142,7 +142,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               className="flex items-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              重新录制
+              Record Again
             </Button>
           </div>
 
@@ -151,13 +151,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               <div className="relative">
                 <img 
                   src={result.imageUrl} 
-                  alt="AI生成的图像" 
+                  alt="AI Generated Image" 
                   className="w-full rounded-lg border shadow-lg"
                 />
               </div>
               
               <Card className="p-4 bg-muted/50">
-                <h3 className="font-semibold mb-2">语音指令：</h3>
+                <h3 className="font-semibold mb-2">Voice Command:</h3>
                 <p className="text-muted-foreground">"{result.prompt}"</p>
               </Card>
               
@@ -168,14 +168,14 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
                   className="flex-1"
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  重新录制
+                  Record Again
                 </Button>
                 
                 <Button 
                   onClick={handleBackToHome}
                   className="flex-1"
                 >
-                  完成
+                  Done
                 </Button>
               </div>
             </div>
@@ -183,13 +183,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
             <div className="space-y-4">
               <div className="text-center space-y-4">
                 <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">正在生成图像，请稍候...</p>
+                <p className="text-muted-foreground">Generating image, please wait...</p>
               </div>
               
               {/* API 调用明细 */}
               {statusLog.length > 0 && (
                 <Card className="p-4 bg-muted/30">
-                  <h3 className="font-semibold mb-3 text-sm">API 调用明细：</h3>
+                  <h3 className="font-semibold mb-3 text-sm">API Call Details:</h3>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {statusLog.map((log, index) => (
                       <p key={index} className="text-xs font-mono text-muted-foreground">
@@ -202,7 +202,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               
               {imageError && (
                 <Card className="p-4 bg-destructive/10 border-destructive/20">
-                  <h3 className="font-semibold mb-2 text-destructive">错误详情：</h3>
+                  <h3 className="font-semibold mb-2 text-destructive">Error Details:</h3>
                   <p className="text-sm text-destructive">{imageError}</p>
                 </Card>
               )}
@@ -232,12 +232,12 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           <div className="flex items-center justify-between">
             <Badge variant={isListening ? "default" : "secondary"} className="gap-2">
               {isListening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-              {isListening ? '正在监听...' : '语音已停止'}
+              {isListening ? 'Listening...' : 'Speech Stopped'}
             </Badge>
             
             {isRecording && (
               <Badge variant="destructive" className="animate-pulse">
-                ● 录制中
+                ● Recording
               </Badge>
             )}
           </div>
@@ -250,12 +250,12 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               <div className="space-y-2">
                 {finalTranscript && (
                   <p className="text-white font-medium">
-                    已确认：{finalTranscript}
+                    Confirmed: {finalTranscript}
                   </p>
                 )}
                 {transcript && (
                   <p className="text-white/70 text-sm">
-                    正在说：{transcript}
+                    Speaking: {transcript}
                   </p>
                 )}
               </div>
@@ -283,7 +283,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           
           {isGenerating && (
             <p className="text-center text-white mt-4">
-              正在生成图像，请稍候...
+              Generating image, please wait...
             </p>
           )}
         </div>
