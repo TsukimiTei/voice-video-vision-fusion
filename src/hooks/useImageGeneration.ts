@@ -50,10 +50,13 @@ export const useImageGeneration = () => {
       if (!submitResponse.ok) {
         let errorText;
         try {
-          const errorJson = await submitResponse.json();
+          // Clone the response to avoid "body stream already read" error
+          const responseClone = submitResponse.clone();
+          const errorJson = await responseClone.json();
           errorText = errorJson.error || errorJson.details || `HTTP ${submitResponse.status}`;
         } catch {
-          errorText = await submitResponse.text();
+          const errorText2 = await submitResponse.text();
+          errorText = errorText2;
         }
         
         addLog(`❌ 请求失败: ${submitResponse.status} - ${errorText}`);
