@@ -310,8 +310,8 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
         {/* Bottom Recording Button */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-20">
-          <div className="flex items-center gap-6">
-            {/* Main Recording Button */}
+          <div className="relative flex items-center">
+            {/* Main Recording Button - Centered */}
             <div className="flex flex-col items-center gap-3">
               <Button
                 onMouseDown={handlePressStart}
@@ -339,14 +339,14 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               </p>
             </div>
             
-            {/* Camera Switch Button */}
+            {/* Camera Switch Button - Right side */}
             <Button 
               variant="ghost" 
               size="lg"
               onClick={switchCamera}
-              className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full h-16 w-16"
+              className="absolute left-36 text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full h-16 w-16"
             >
-              <SwitchCamera className="h-6 w-6" />
+              <SwitchCamera className="h-8 w-8" />
             </Button>
           </div>
         </div>
