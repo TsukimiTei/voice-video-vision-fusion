@@ -6,6 +6,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Function to calculate aspect ratio from base64 image
+async function calculateAspectRatioFromImage(base64Data: string): Promise<string> {
+  try {
+    // Decode base64 to get image data
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create a blob from the bytes
+    const blob = new Blob([bytes]);
+    
+    // Create an image bitmap to get dimensions
+    const imageBitmap = await createImageBitmap(blob);
+    const width = imageBitmap.width;
+    const height = imageBitmap.height;
+    
+    // Close the bitmap to free memory
+    imageBitmap.close();
+    
+    console.log(`Image dimensions: ${width}x${height}`);
+    
+    // Calculate aspect ratio and map to supported BFL ratios
+    const aspectRatio = width / height;
+    
+    // Map to supported BFL aspect ratios (3:7 to 7:3 range)
+    if (aspectRatio >= 2.1) return '7:3';        // Very wide landscape
+    else if (aspectRatio >= 1.7) return '16:9';   // Wide landscape  
+    else if (aspectRatio >= 1.4) return '3:2';    // Standard landscape
+    else if (aspectRatio >= 1.1) return '4:3';    // Slightly landscape
+    else if (aspectRatio >= 0.9) return '1:1';    // Square
+    else if (aspectRatio >= 0.7) return '3:4';    // Slightly portrait
+    else if (aspectRatio >= 0.6) return '2:3';    // Standard portrait
+    else if (aspectRatio >= 0.5) return '9:16';   // Tall portrait
+    else return '3:7';                             // Very tall portrait
+    
+  } catch (error) {
+    console.error('Error calculating aspect ratio:', error);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,7 +56,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, input_image, aspect_ratio = '1:1' } = await req.json();
+    const { prompt, input_image, aspect_ratio } = await req.json();
     
     if (!prompt || !input_image) {
       return new Response(
@@ -31,11 +74,23 @@ serve(async (req) => {
       // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
       cleanImageData = input_image.split(',')[1];
     }
+
+    // Calculate aspect ratio from input image if not provided
+    let finalAspectRatio = aspect_ratio;
+    if (!aspect_ratio) {
+      try {
+        finalAspectRatio = await calculateAspectRatioFromImage(cleanImageData);
+        console.log('Calculated aspect ratio from image:', finalAspectRatio);
+      } catch (error) {
+        console.warn('Failed to calculate aspect ratio, using default 1:1:', error);
+        finalAspectRatio = '1:1';
+      }
+    }
     
     console.log('Request details:', {
       prompt: prompt,
       imageDataLength: cleanImageData.length,
-      aspectRatio: aspect_ratio
+      aspectRatio: finalAspectRatio
     });
 
     // Get BFL API key from environment
@@ -64,7 +119,7 @@ serve(async (req) => {
       body: JSON.stringify({
         prompt,
         input_image: cleanImageData,
-        aspect_ratio,
+        aspect_ratio: finalAspectRatio,
         output_format: 'jpeg',
         safety_tolerance: 2
       }),

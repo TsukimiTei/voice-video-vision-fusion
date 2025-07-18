@@ -33,8 +33,8 @@ export const useImageGeneration = () => {
       const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-image-edit', {
         body: {
           prompt,
-          input_image: imageBase64,
-          aspect_ratio: '1:1'
+          input_image: imageBase64
+          // aspect_ratio will be automatically calculated from input image
         }
       });
 
