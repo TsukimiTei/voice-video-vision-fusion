@@ -51,6 +51,17 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       console.log('最终提示词:', finalPrompt);
       console.log('源图像类型:', sourceImage.startsWith('data:') ? 'base64' : 'url');
       
+      // Extract base64 data from data URL
+      let base64Data = sourceImage;
+      if (sourceImage.startsWith('data:')) {
+        const base64Index = sourceImage.indexOf(',');
+        if (base64Index !== -1) {
+          base64Data = sourceImage.substring(base64Index + 1);
+        }
+      }
+      
+      console.log('处理后的base64数据长度:', base64Data.length);
+      
       // Call Supabase Edge Function instead of BFL API directly
       const response = await fetch('/functions/v1/generate-image', {
         method: 'POST',
@@ -60,7 +71,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         },
         body: JSON.stringify({
           prompt: finalPrompt,
-          image: sourceImage,
+          image: base64Data,
           strength: 0.8,
           aspect_ratio: "1:1"
         }),
