@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw, SwitchCamera, X, Download, Circle } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -19,6 +20,7 @@ interface VideoRecorderProps {
 export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const [isRecordingActive, setIsRecordingActive] = useState(false);
+  const [showNSFWDialog, setShowNSFWDialog] = useState(false);
   const { isRecording, videoRef, startCamera, stopCamera, switchCamera, facingMode, error: cameraError } = useCamera();
   const { 
     isListening, 
@@ -56,8 +58,14 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           setViewState('result');
         } catch (error) {
           console.error('Generation error:', error);
-          toast.error('Processing failed, please try again');
-          setViewState('home');
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          
+          if (errorMessage.includes('内容被审核系统拦截') || errorMessage.includes('Request Moderated')) {
+            setShowNSFWDialog(true);
+          } else {
+            toast.error('Processing failed, please try again');
+            setViewState('home');
+          }
         }
       } else if (!finalTranscript) {
         toast.error('No voice command detected');
@@ -79,6 +87,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
   const handleTryAgain = () => {
     setViewState('home');
     resetTranscript();
+  };
+
+  const handleNSFWDialogConfirm = () => {
+    setShowNSFWDialog(false);
+    setViewState('home');
+    resetTranscript();
+    stopCamera();
   };
 
   const handleCancelRecording = () => {
@@ -372,6 +387,23 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           </Card>
         </div>
       )}
+
+      {/* NSFW Content Dialog */}
+      <AlertDialog open={showNSFWDialog} onOpenChange={setShowNSFWDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>内容被审核系统拦截</AlertDialogTitle>
+            <AlertDialogDescription>
+              当前生成的图像被NSFW检测系统拦截，请重新拍摄并使用不同的描述词。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleNSFWDialogConfirm}>
+              确认重新拍摄
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
