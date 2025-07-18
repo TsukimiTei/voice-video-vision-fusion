@@ -33,8 +33,14 @@ export const useImageGeneration = () => {
       }
 
       // 清理 base64 数据
-      const cleanedBase64 = cleanBase64(sourceImage);
-      console.log('Cleaned base64 size:', cleanedBase64.length);
+      let cleanedBase64;
+      try {
+        cleanedBase64 = cleanBase64(sourceImage);
+        console.log('Cleaned base64 size:', cleanedBase64.length);
+      } catch (cleanError) {
+        console.error('Base64 cleaning failed:', cleanError);
+        throw new Error('图像数据格式错误，请重新拍摄');
+      }
 
       // 准备请求数据
       const requestData = {

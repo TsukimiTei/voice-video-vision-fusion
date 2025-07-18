@@ -89,21 +89,29 @@ export const captureFromVideo = async (video: HTMLVideoElement): Promise<string>
 
 // 清理和验证 base64 数据
 export const cleanBase64 = (dataUrl: string): string => {
-  // 移除 data URL 前缀
-  const commaIndex = dataUrl.indexOf(',');
-  if (commaIndex === -1) {
-    throw new Error('Invalid data URL format');
+  try {
+    // 移除 data URL 前缀
+    const commaIndex = dataUrl.indexOf(',');
+    if (commaIndex === -1) {
+      throw new Error('Invalid data URL format');
+    }
+    
+    let base64 = dataUrl.substring(commaIndex + 1);
+    
+    // 移除所有空白字符和换行符
+    base64 = base64.replace(/[\s\r\n]/g, '');
+    
+    // 确保正确的填充
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+    
+    // 测试解码以验证格式
+    atob(base64);
+    
+    return base64;
+  } catch (error) {
+    console.error('Base64 cleaning error:', error);
+    throw new Error('Invalid base64 data format');
   }
-  
-  let base64 = dataUrl.substring(commaIndex + 1);
-  
-  // 移除所有空白字符
-  base64 = base64.replace(/\s/g, '');
-  
-  // 验证 base64 格式
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
-    throw new Error('Invalid base64 format');
-  }
-  
-  return base64;
 };
