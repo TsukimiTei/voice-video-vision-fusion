@@ -30,8 +30,9 @@ export const captureVideoFrame = (video: HTMLVideoElement): string | null => {
 
 export const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user'): MediaStreamConstraints => ({
   video: {
-    width: { ideal: 1280 },
+    width: { ideal: 720 },
     height: { ideal: 720 },
+    aspectRatio: 1.0,
     facingMode: facingMode
   },
   audio: true
