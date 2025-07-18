@@ -246,8 +246,8 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
   // 录制页面
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center">
-      {/* Video Container with 1:1 aspect ratio */}
+    <div className="min-h-screen bg-background relative overflow-hidden flex justify-center">
+      {/* Video Container with 1:1 aspect ratio - Top aligned */}
       <div className="relative w-full max-w-screen-sm aspect-square bg-black">
         <video
           ref={videoRef}
