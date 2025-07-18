@@ -246,24 +246,27 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
   // 录制页面
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden flex justify-center">
-      {/* Video Container with 1:1 aspect ratio - Top aligned */}
-      <div className="relative w-full max-w-screen-sm aspect-square bg-black">
-        <video
-          ref={videoRef}
-          className="w-full h-full object-cover"
-          style={{ 
-            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-            objectFit: 'cover',
-            objectPosition: 'center'
-          }}
-          autoPlay
-          muted
-          playsInline
-        />
-      
-        {/* UI Overlay */}
-        <div className="absolute inset-0 flex flex-col">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Video Container with strict 1:1 aspect ratio - Top aligned */}
+      <div className="w-full flex justify-center">
+        <div className="relative w-full max-w-screen-sm aspect-square bg-black overflow-hidden">
+          <video
+            ref={videoRef}
+            className="w-full h-full"
+            style={{ 
+              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              width: '100%',
+              height: '100%'
+            }}
+            autoPlay
+            muted
+            playsInline
+          />
+        
+          {/* UI Overlay */}
+          <div className="absolute inset-0 flex flex-col">
         {/* Top Bar - Speech Status - Floating */}
         <div className="absolute top-4 left-4 right-4 z-10">
           <div className="flex items-center justify-between">
@@ -356,6 +359,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           </div>
         </div>
         </div>
+      </div>
       </div>
 
       {/* Error Messages */}
