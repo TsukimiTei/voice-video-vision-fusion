@@ -246,19 +246,24 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
 
   // 录制页面
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Video Preview */}
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover"
-        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
-        autoPlay
-        muted
-        playsInline
-      />
+    <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center">
+      {/* Video Container with 1:1 aspect ratio */}
+      <div className="relative w-full max-w-screen-sm aspect-square bg-black">
+        <video
+          ref={videoRef}
+          className="w-full h-full object-cover"
+          style={{ 
+            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+            objectFit: 'cover',
+            objectPosition: 'center'
+          }}
+          autoPlay
+          muted
+          playsInline
+        />
       
-      {/* UI Overlay */}
-      <div className="absolute inset-0 flex flex-col">
+        {/* UI Overlay */}
+        <div className="absolute inset-0 flex flex-col">
         {/* Top Bar - Speech Status - Floating */}
         <div className="absolute top-4 left-4 right-4 z-10">
           <div className="flex items-center justify-between">
@@ -349,6 +354,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               <SwitchCamera className="h-8 w-8" />
             </Button>
           </div>
+        </div>
         </div>
       </div>
 
