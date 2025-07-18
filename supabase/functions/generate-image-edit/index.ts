@@ -24,8 +24,8 @@ serve(async (req) => {
       )
     }
 
-    // Get BFL API key from environment
-    const BFL_API_KEY = Deno.env.get('BFL_API_KEY')
+    // Get BFL API key from environment - using the actual secret name
+    const BFL_API_KEY = Deno.env.get('06ca1d6d-ae68-4f25-a3eb-6b1caae2fbae')
     if (!BFL_API_KEY) {
       return new Response(
         JSON.stringify({ error: 'BFL API key not configured' }),
