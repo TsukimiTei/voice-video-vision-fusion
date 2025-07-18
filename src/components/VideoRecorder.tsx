@@ -6,6 +6,7 @@ import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw } from 'luci
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useImageGeneration } from '../hooks/useImageGeneration';
+import { useTranslation } from '../hooks/useTranslation';
 import { captureVideoFrame } from '../utils/videoUtils';
 import { toast } from 'sonner';
 
@@ -28,6 +29,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
     error: speechError 
   } = useSpeechRecognition();
   const { generateImage, isGenerating, result, error: imageError, statusLog } = useImageGeneration();
+  const { translateToEnglish, isTranslating } = useTranslation();
 
   const handleStartRecording = async () => {
     setViewState('recording');
@@ -42,9 +44,18 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
     if (videoRef.current) {
       const frameBase64 = captureVideoFrame(videoRef.current);
       if (frameBase64 && finalTranscript) {
-        toast.success('正在生成图像...');
-        await generateImage(frameBase64, finalTranscript);
-        setViewState('result');
+        try {
+          toast.success('正在翻译指令...');
+          const englishPrompt = await translateToEnglish(finalTranscript);
+          
+          toast.success('正在生成图像...');
+          await generateImage(frameBase64, englishPrompt);
+          setViewState('result');
+        } catch (error) {
+          console.error('Translation or generation error:', error);
+          toast.error('处理失败，请重试');
+          setViewState('home');
+        }
       } else if (!finalTranscript) {
         toast.error('未检测到语音指令');
         setViewState('home');
@@ -260,9 +271,9 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               size="lg"
               variant="destructive"
               className="rounded-full h-16 w-16"
-              disabled={isGenerating}
+              disabled={isGenerating || isTranslating}
             >
-              {isGenerating ? (
+              {isGenerating || isTranslating ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
                 <Square className="h-6 w-6" />
