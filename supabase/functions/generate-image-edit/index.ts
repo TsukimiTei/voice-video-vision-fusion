@@ -63,7 +63,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt,
-        image: cleanImageData,
+        input_image: cleanImageData,
         aspect_ratio,
         output_format: 'jpeg',
         safety_tolerance: 2
