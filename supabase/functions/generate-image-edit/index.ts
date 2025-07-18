@@ -16,8 +16,8 @@ async function calculateAspectRatioFromImage(base64Data: string): Promise<string
       bytes[i] = binaryString.charCodeAt(i);
     }
     
-    // Create a blob from the bytes
-    const blob = new Blob([bytes]);
+    // Create a blob from the bytes with proper MIME type
+    const blob = new Blob([bytes], { type: 'image/jpeg' });
     
     // Create an image bitmap to get dimensions
     const imageBitmap = await createImageBitmap(blob);
@@ -31,17 +31,22 @@ async function calculateAspectRatioFromImage(base64Data: string): Promise<string
     
     // Calculate aspect ratio and map to supported BFL ratios
     const aspectRatio = width / height;
+    console.log(`Calculated aspect ratio: ${aspectRatio}`);
     
     // Map to supported BFL aspect ratios (3:7 to 7:3 range)
-    if (aspectRatio >= 2.1) return '7:3';        // Very wide landscape
-    else if (aspectRatio >= 1.7) return '16:9';   // Wide landscape  
-    else if (aspectRatio >= 1.4) return '3:2';    // Standard landscape
-    else if (aspectRatio >= 1.1) return '4:3';    // Slightly landscape
-    else if (aspectRatio >= 0.9) return '1:1';    // Square
-    else if (aspectRatio >= 0.7) return '3:4';    // Slightly portrait
-    else if (aspectRatio >= 0.6) return '2:3';    // Standard portrait
-    else if (aspectRatio >= 0.5) return '9:16';   // Tall portrait
-    else return '3:7';                             // Very tall portrait
+    let mappedRatio: string;
+    if (aspectRatio >= 2.1) mappedRatio = '7:3';        // Very wide landscape
+    else if (aspectRatio >= 1.7) mappedRatio = '16:9';   // Wide landscape  
+    else if (aspectRatio >= 1.4) mappedRatio = '3:2';    // Standard landscape
+    else if (aspectRatio >= 1.1) mappedRatio = '4:3';    // Slightly landscape
+    else if (aspectRatio >= 0.9) mappedRatio = '1:1';    // Square
+    else if (aspectRatio >= 0.7) mappedRatio = '3:4';    // Slightly portrait
+    else if (aspectRatio >= 0.6) mappedRatio = '2:3';    // Standard portrait
+    else if (aspectRatio >= 0.5) mappedRatio = '9:16';   // Tall portrait
+    else mappedRatio = '3:7';                             // Very tall portrait
+    
+    console.log(`Mapped to BFL aspect ratio: ${mappedRatio}`);
+    return mappedRatio;
     
   } catch (error) {
     console.error('Error calculating aspect ratio:', error);
