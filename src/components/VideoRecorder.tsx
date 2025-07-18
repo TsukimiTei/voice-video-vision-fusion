@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { Camera, Square, Mic, MicOff, Loader2 } from 'lucide-react';
+import { Camera, Square, Mic, MicOff, Loader2, ArrowLeft, RotateCcw } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useImageGeneration } from '../hooks/useImageGeneration';
 import { captureVideoFrame } from '../utils/videoUtils';
 import { toast } from 'sonner';
 
+type ViewState = 'home' | 'recording' | 'result';
+
 export const VideoRecorder = () => {
-  const [showCamera, setShowCamera] = useState(false);
+  const [viewState, setViewState] = useState<ViewState>('home');
   const { isRecording, videoRef, startCamera, stopCamera, error: cameraError } = useCamera();
   const { 
     isListening, 
@@ -24,7 +26,7 @@ export const VideoRecorder = () => {
   const { generateImage, isGenerating, result, error: imageError } = useImageGeneration();
 
   const handleStartRecording = async () => {
-    setShowCamera(true);
+    setViewState('recording');
     await startCamera();
     startListening();
     resetTranscript();
@@ -38,18 +40,31 @@ export const VideoRecorder = () => {
       if (frameBase64 && finalTranscript) {
         toast.success('正在生成图像...');
         await generateImage(frameBase64, finalTranscript);
+        setViewState('result');
       } else if (!finalTranscript) {
         toast.error('未检测到语音指令');
+        setViewState('home');
       } else {
         toast.error('无法截取视频帧');
+        setViewState('home');
       }
     }
     
     stopCamera();
-    setShowCamera(false);
   };
 
-  if (!showCamera) {
+  const handleBackToHome = () => {
+    setViewState('home');
+    resetTranscript();
+  };
+
+  const handleTryAgain = () => {
+    setViewState('home');
+    resetTranscript();
+  };
+
+  // 主页
+  if (viewState === 'home') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="p-8 max-w-md w-full text-center space-y-6">
@@ -68,18 +83,77 @@ export const VideoRecorder = () => {
             <Camera className="mr-2 h-5 w-5" />
             开始录制
           </Button>
-          
-          {result && (
+        </Card>
+      </div>
+    );
+  }
+
+  // 结果页面
+  if (viewState === 'result') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="p-8 max-w-2xl w-full space-y-6">
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleBackToHome}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              返回
+            </Button>
+            
+            <h2 className="text-xl font-bold text-foreground">生成结果</h2>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleTryAgain}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              重新录制
+            </Button>
+          </div>
+
+          {result ? (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">生成结果：</h3>
-              <img 
-                src={result.imageUrl} 
-                alt="Generated" 
-                className="w-full rounded-lg border"
-              />
-              <p className="text-sm text-muted-foreground">
-                指令：{result.prompt}
-              </p>
+              <div className="relative">
+                <img 
+                  src={result.imageUrl} 
+                  alt="AI生成的图像" 
+                  className="w-full rounded-lg border shadow-lg"
+                />
+              </div>
+              
+              <Card className="p-4 bg-muted/50">
+                <h3 className="font-semibold mb-2">语音指令：</h3>
+                <p className="text-muted-foreground">"{result.prompt}"</p>
+              </Card>
+              
+              <div className="flex gap-3">
+                <Button 
+                  onClick={handleTryAgain}
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  重新录制
+                </Button>
+                
+                <Button 
+                  onClick={handleBackToHome}
+                  className="flex-1"
+                >
+                  完成
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
+              <p className="text-muted-foreground">正在生成图像，请稍候...</p>
             </div>
           )}
         </Card>
@@ -87,6 +161,7 @@ export const VideoRecorder = () => {
     );
   }
 
+  // 录制页面
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Video Preview */}
