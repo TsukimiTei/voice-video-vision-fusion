@@ -267,99 +267,99 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
         
           {/* UI Overlay */}
           <div className="absolute inset-0 flex flex-col">
-        {/* Top Bar - Speech Status - Floating */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <div className="flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleCancelRecording}
-              className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            
-            <div className="flex items-center gap-3">
-              <Badge variant={isListening ? "default" : "secondary"} className="gap-2 bg-black/30 backdrop-blur-sm">
-                {isListening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-                {isListening ? 'Listening...' : 'Speech Stopped'}
-              </Badge>
-              
-              {isRecordingActive && (
-                <Badge variant="destructive" className="animate-pulse bg-red-500/80 backdrop-blur-sm">
-                  ● Recording
-                </Badge>
-              )}
-            </div>
+            {/* Top Bar - Speech Status - Floating */}
+            <div className="absolute top-4 left-4 right-4 z-10">
+              <div className="flex items-center justify-between">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleCancelRecording}
+                  className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-3">
+                  <Badge variant={isListening ? "default" : "secondary"} className="gap-2 bg-black/30 backdrop-blur-sm">
+                    {isListening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+                    {isListening ? 'Listening...' : 'Speech Stopped'}
+                  </Badge>
+                  
+                  {isRecordingActive && (
+                    <Badge variant="destructive" className="animate-pulse bg-red-500/80 backdrop-blur-sm">
+                      ● Recording
+                    </Badge>
+                  )}
+                </div>
 
-            <div className="w-10" /> {/* Spacer for balance */}
-          </div>
-        </div>
-
-        {/* Speech Text Overlay */}
-        {(transcript || finalTranscript) && (
-          <div className="absolute top-20 left-4 right-4">
-            <Card className="p-4 bg-black/50 backdrop-blur-sm border-white/20">
-              <div className="space-y-2">
-                {finalTranscript && (
-                  <p className="text-white font-medium">
-                    Confirmed: {finalTranscript}
-                  </p>
-                )}
-                {transcript && (
-                  <p className="text-white/70 text-sm">
-                    Speaking: {transcript}
-                  </p>
-                )}
+                <div className="w-10" /> {/* Spacer for balance */}
               </div>
-            </Card>
-          </div>
-        )}
-
-        {/* Bottom Recording Button */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-20">
-          <div className="relative flex items-center">
-            {/* Main Recording Button - Centered */}
-            <div className="flex flex-col items-center gap-3">
-              <Button
-                onMouseDown={handlePressStart}
-                onMouseUp={handlePressEnd}
-                onTouchStart={handlePressStart}
-                onTouchEnd={handlePressEnd}
-                size="lg"
-                variant={isRecordingActive ? "destructive" : "default"}
-                className={`rounded-full h-24 w-24 transition-all duration-200 ${
-                  isRecordingActive ? 'scale-110 shadow-lg' : 'hover:scale-105'
-                }`}
-                disabled={isGenerating}
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                ) : isRecordingActive ? (
-                  <Square className="h-8 w-8" />
-                ) : (
-                  <Circle className="h-8 w-8" />
-                )}
-              </Button>
-              
-              <p className="text-white text-center font-medium bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm text-sm">
-                {isGenerating ? 'Generating...' : isRecordingActive ? 'Recording... Release to stop' : 'Hold to record'}
-              </p>
             </div>
-            
-            {/* Camera Switch Button - Right side */}
-            <Button 
-              variant="ghost" 
-              size="lg"
-              onClick={switchCamera}
-              className="absolute left-36 text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full h-16 w-16"
-            >
-              <SwitchCamera className="h-8 w-8" />
-            </Button>
+
+            {/* Speech Text Overlay */}
+            {(transcript || finalTranscript) && (
+              <div className="absolute top-20 left-4 right-4">
+                <Card className="p-4 bg-black/50 backdrop-blur-sm border-white/20">
+                  <div className="space-y-2">
+                    {finalTranscript && (
+                      <p className="text-white font-medium">
+                        Confirmed: {finalTranscript}
+                      </p>
+                    )}
+                    {transcript && (
+                      <p className="text-white/70 text-sm">
+                        Speaking: {transcript}
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
-        </div>
         </div>
       </div>
+      
+      {/* Recording Controls - Below camera view with 32px spacing */}
+      <div className="w-full flex justify-center" style={{ marginTop: '32px' }}>
+        <div className="relative flex items-center">
+          {/* Main Recording Button - Centered */}
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              onMouseDown={handlePressStart}
+              onMouseUp={handlePressEnd}
+              onTouchStart={handlePressStart}
+              onTouchEnd={handlePressEnd}
+              size="lg"
+              variant={isRecordingActive ? "destructive" : "default"}
+              className={`rounded-full h-24 w-24 transition-all duration-200 ${
+                isRecordingActive ? 'scale-110 shadow-lg' : 'hover:scale-105'
+              }`}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-8 w-8 animate-spin" />
+              ) : isRecordingActive ? (
+                <Square className="h-8 w-8" />
+              ) : (
+                <Circle className="h-8 w-8" />
+              )}
+            </Button>
+            
+            <p className="text-white text-center font-medium bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm text-sm">
+              {isGenerating ? 'Generating...' : isRecordingActive ? 'Recording... Release to stop' : 'Hold to record'}
+            </p>
+          </div>
+          
+          {/* Camera Switch Button - Right side */}
+          <Button 
+            variant="ghost" 
+            size="lg"
+            onClick={switchCamera}
+            className="absolute left-36 text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full h-16 w-16"
+          >
+            <SwitchCamera className="h-8 w-8" />
+          </Button>
+        </div>
       </div>
 
       {/* Error Messages */}
