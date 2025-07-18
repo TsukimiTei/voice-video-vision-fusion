@@ -29,7 +29,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
     error: speechError 
   } = useSpeechRecognition();
   const { generateImage, isGenerating, result, error: imageError, statusLog } = useImageGeneration();
-  const { translateToEnglish, isTranslating } = useTranslation();
+  // const { translateToEnglish, isTranslating } = useTranslation();
 
   const handleStartRecording = async () => {
     setViewState('recording');
@@ -45,14 +45,14 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
       const frameBase64 = captureVideoFrame(videoRef.current);
       if (frameBase64 && finalTranscript) {
         try {
-          toast.success('正在翻译指令...');
-          const englishPrompt = await translateToEnglish(finalTranscript);
+          // toast.success('正在翻译指令...');
+          // const englishPrompt = await translateToEnglish(finalTranscript);
           
           toast.success('正在生成图像...');
-          await generateImage(frameBase64, englishPrompt);
+          await generateImage(frameBase64, finalTranscript);
           setViewState('result');
         } catch (error) {
-          console.error('Translation or generation error:', error);
+          console.error('Generation error:', error);
           toast.error('处理失败，请重试');
           setViewState('home');
         }
@@ -271,9 +271,9 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
               size="lg"
               variant="destructive"
               className="rounded-full h-16 w-16"
-              disabled={isGenerating || isTranslating}
+              disabled={isGenerating}
             >
-              {isGenerating || isTranslating ? (
+              {isGenerating ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
                 <Square className="h-6 w-6" />
