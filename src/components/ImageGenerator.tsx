@@ -33,8 +33,9 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   }, [command]);
 
   const generateImage = async () => {
-    if (!apiKey) {
-      toast.error('请输入 BFL API 密钥');
+    const finalPrompt = manualPrompt.trim() || command;
+    if (!finalPrompt) {
+      toast.error('请输入提示词或语音命令');
       return;
     }
 
@@ -43,65 +44,19 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       return;
     }
 
-    const finalPrompt = manualPrompt.trim() || command;
-    if (!finalPrompt) {
-      toast.error('请输入提示词或语音命令');
-      return;
-    }
-
     setIsGenerating(true);
     
     try {
       console.log('开始图像生成...');
-      console.log('API Key状态:', apiKey ? '已设置' : '未设置');
-      console.log('源图像URL:', sourceImage);
       console.log('最终提示词:', finalPrompt);
+      console.log('源图像类型:', sourceImage.startsWith('data:') ? 'base64' : 'url');
       
-      // 检查源图像是否是有效的base64或URL
-      let blob: Blob;
-      
-      if (sourceImage.startsWith('data:')) {
-        // 如果是base64图像，直接转换
-        console.log('处理base64图像...');
-        const response = await fetch(sourceImage);
-        if (!response.ok) {
-          throw new Error(`无法处理base64图像: ${response.status}`);
-        }
-        blob = await response.blob();
-      } else {
-        // 如果是URL，需要添加CORS处理
-        console.log('处理URL图像...');
-        const response = await fetch(sourceImage, {
-          mode: 'cors',
-          headers: {
-            'Accept': 'image/*'
-          }
-        });
-        
-        console.log('图像fetch响应状态:', response.status);
-        
-        if (!response.ok) {
-          throw new Error(`获取源图像失败: ${response.status}`);
-        }
-        
-        blob = await response.blob();
-      }
-      console.log('图像Blob大小:', blob.size, 'bytes');
-      
-      // 创建 FormData
-      const formData = new FormData();
-      formData.append('image', blob, 'source.jpg');
-      formData.append('prompt', finalPrompt);
-      formData.append('strength', '0.8');
-      
-      console.log('发送API请求到:', 'https://api.bfl.ai/v1/flux-kontext-pro');
-      
-      // 调用 BFL API (正确的API端点)
-      const apiResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
+      // Call Supabase Edge Function instead of BFL API directly
+      const response = await fetch('/functions/v1/generate-image', {
         method: 'POST',
         headers: {
-          'x-key': apiKey,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || ''}`,
         },
         body: JSON.stringify({
           prompt: finalPrompt,
@@ -111,25 +66,22 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         }),
       });
 
-      console.log('API响应状态:', apiResponse.status);
-      console.log('API响应headers:', Object.fromEntries(apiResponse.headers.entries()));
+      console.log('Edge Function 响应状态:', response.status);
 
-      if (!apiResponse.ok) {
-        const errorText = await apiResponse.text();
-        console.error('API错误响应:', errorText);
-        throw new Error(`API 请求失败: ${apiResponse.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Edge Function 错误:', errorData);
+        throw new Error(`服务器错误: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
-      const result = await apiResponse.json();
-      console.log('API响应数据:', result);
+      const result = await response.json();
+      console.log('Edge Function 响应:', result);
       
-      if (result.id && result.polling_url) {
-        // BFL API 是异步的，需要轮询结果
-        toast.success('图像生成请求已提交，正在处理...');
-        await pollForResult(result.polling_url, apiKey);
+      if (result.success && result.data) {
+        onResult(result.data);
+        toast.success('图像生成完成！');
       } else {
-        console.error('API响应结构:', result);
-        throw new Error('API 响应中未找到请求ID或轮询URL');
+        throw new Error(result.error || '图像生成失败');
       }
     } catch (error) {
       console.error('图像生成详细错误:', error);
@@ -140,7 +92,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
         errorType: error.constructor.name,
         errorMessage: error.message,
         errorStack: error.stack,
-        apiKeyConfigured: !!apiKey,
         sourceImageType: sourceImage.startsWith('data:') ? 'base64' : 'url',
         sourceImageSize: sourceImage.length,
         originalCommand: command,
@@ -154,9 +105,9 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       console.error('完整错误日志:', errorLogString);
       
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast.error('网络连接失败，请检查网络状态');
+        toast.error('网络连接失败，请检查网络状态或联系技术支持');
       } else if (error.message.includes('401')) {
-        toast.error('API 密钥无效，请检查密钥是否正确');
+        toast.error('认证失败，请检查配置');
       } else if (error.message.includes('429')) {
         toast.error('API 请求频率过高，请稍后重试');
       } else {
@@ -165,50 +116,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const pollForResult = async (pollingUrl: string, apiKey: string) => {
-    const maxAttempts = 60; // 最多轮询60次 (30秒)
-    let attempts = 0;
-    
-    while (attempts < maxAttempts) {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 500)); // 等待0.5秒
-        
-        const pollResponse = await fetch(pollingUrl, {
-          headers: {
-            'x-key': apiKey,
-            'accept': 'application/json'
-          }
-        });
-        
-        if (!pollResponse.ok) {
-          throw new Error(`轮询失败: ${pollResponse.status}`);
-        }
-        
-        const pollResult = await pollResponse.json();
-        console.log('轮询状态:', pollResult.status);
-        
-        if (pollResult.status === 'Ready') {
-          if (pollResult.result?.sample) {
-            onResult(pollResult.result.sample);
-            toast.success('图像生成完成！');
-            return;
-          } else {
-            throw new Error('结果中未找到图像URL');
-          }
-        } else if (pollResult.status === 'Error' || pollResult.status === 'Failed') {
-          throw new Error(`生成失败: ${JSON.stringify(pollResult)}`);
-        }
-        
-        attempts++;
-      } catch (error) {
-        console.error('轮询错误:', error);
-        throw error;
-      }
-    }
-    
-    throw new Error('图像生成超时，请重试');
   };
 
   const copyErrorLog = async () => {
@@ -280,52 +187,22 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
             </p>
           </div>
 
-          {/* API 密钥状态 */}
-          {apiKey ? (
-            <Card className="p-4 bg-secondary/50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">
-                    API 密钥状态
-                  </Label>
-                  <p className="text-sm text-primary font-medium mt-1">✓ 已配置 BFL API 密钥</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                onClick={() => {
-                  localStorage.removeItem('bfl-api-key');
-                  setApiKey('');
-                }}
-                >
-                  重新配置
-                </Button>
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">BFL API 密钥</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="请输入您的 API 密钥"
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  localStorage.setItem('bfl-api-key', e.target.value);
-                }}
-                className="bg-background/50"
-              />
-              <p className="text-xs text-muted-foreground">
-                请在 BFL 官网 (api.bfl.ai) 获取 API 密钥
+          {/* 提示说明 */}
+          <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+            <div className="text-sm space-y-2">
+              <p className="text-blue-700 dark:text-blue-300 font-medium">
+                📋 使用说明：
+              </p>
+              <p className="text-blue-600 dark:text-blue-400">
+                该功能需要配置 Supabase 后端和 BFL API 密钥。请在 Supabase 项目的 Edge Functions 中配置 BFL_API_KEY 环境变量。
               </p>
             </div>
-          )}
+          </Card>
 
           {/* 生成按钮 */}
           <Button
             onClick={generateImage}
-            disabled={isGenerating || !apiKey}
+            disabled={isGenerating || !manualPrompt.trim()}
             className="w-full bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300"
             size="lg"
           >
