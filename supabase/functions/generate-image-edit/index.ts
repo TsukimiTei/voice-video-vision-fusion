@@ -1,18 +1,19 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, image, aspect_ratio = '1:1' } = await req.json()
+    const { prompt, image, aspect_ratio = '1:1' } = await req.json();
     
     if (!prompt || !image) {
       return new Response(
@@ -21,11 +22,11 @@ serve(async (req) => {
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )
+      );
     }
 
     // Get BFL API key from environment
-    const BFL_API_KEY = Deno.env.get('BFL_API_KEY')
+    const BFL_API_KEY = Deno.env.get('BFL_API_KEY');
     if (!BFL_API_KEY) {
       return new Response(
         JSON.stringify({ error: 'BFL API key not configured' }),
@@ -33,12 +34,13 @@ serve(async (req) => {
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )
+      );
     }
 
-    // Submit generation request to BFL API
-    console.log('Submitting to BFL API with key:', BFL_API_KEY.substring(0, 8) + '...')
-    const submitResponse = await fetch('https://api.bfl.ml/v1/flux-pro-1.1', {
+    console.log('Starting FLUX Kontext image editing...');
+
+    // Submit generation request to BFL API using the correct endpoint
+    const submitResponse = await fetch('https://api.bfl.ml/v1/flux-kontext-pro', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,11 +53,11 @@ serve(async (req) => {
         output_format: 'jpeg',
         safety_tolerance: 2
       }),
-    })
+    });
 
     if (!submitResponse.ok) {
-      const errorText = await submitResponse.text()
-      console.error('BFL API error:', submitResponse.status, errorText)
+      const errorText = await submitResponse.text();
+      console.error('BFL API error:', submitResponse.status, errorText);
       return new Response(
         JSON.stringify({ 
           error: `BFL API error: ${submitResponse.status}`,
@@ -65,23 +67,24 @@ serve(async (req) => {
           status: submitResponse.status, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )
+      );
     }
 
-    const submitData = await submitResponse.json()
+    const submitData = await submitResponse.json();
+    console.log('BFL API response:', submitData);
     
-    if (!submitData.id || !submitData.polling_url) {
+    if (!submitData.id) {
       return new Response(
-        JSON.stringify({ error: 'Invalid response from BFL API' }),
+        JSON.stringify({ error: 'Invalid response from BFL API - no task ID' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      )
+      );
     }
 
-    // Poll for results
-    const imageUrl = await pollForResult(submitData.polling_url, BFL_API_KEY)
+    // Poll for results using the get-result endpoint
+    const imageUrl = await pollForResult(submitData.id, BFL_API_KEY);
     
     return new Response(
       JSON.stringify({ 
@@ -92,9 +95,10 @@ serve(async (req) => {
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
 
   } catch (error) {
+    console.error('Edge function error:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
@@ -104,40 +108,51 @@ serve(async (req) => {
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    )
+    );
   }
-})
+});
 
-async function pollForResult(pollingUrl: string, apiKey: string, maxAttempts = 120): Promise<string> {
+async function pollForResult(taskId: string, apiKey: string, maxAttempts = 120): Promise<string> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise(resolve => setTimeout(resolve, 500)) // Wait 0.5s
-    
-    const pollResponse = await fetch(pollingUrl, {
-      method: 'GET',
-      headers: {
-        'X-Key': apiKey,
-      },
-    })
-    
-    if (!pollResponse.ok) {
-      throw new Error(`Polling failed: ${pollResponse.status}`)
-    }
-    
-    const pollData = await pollResponse.json()
-    
-    if (pollData.status === 'Ready') {
-      if (pollData.result && pollData.result.sample) {
-        return pollData.result.sample
-      } else {
-        throw new Error('Generation completed but no image data found')
+    try {
+      // Wait before polling
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+      
+      const pollResponse = await fetch(`https://api.bfl.ml/v1/get_result?id=${taskId}`, {
+        method: 'GET',
+        headers: {
+          'X-Key': apiKey,
+        },
+      });
+      
+      if (!pollResponse.ok) {
+        console.error(`Polling failed with status ${pollResponse.status}`);
+        continue;
       }
-    } else if (pollData.status === 'Error' || pollData.status === 'Failed') {
-      const errorMessage = pollData.error?.message || pollData.failure_reason || 'Unknown error'
-      throw new Error(`Generation failed: ${errorMessage}`)
+      
+      const pollData = await pollResponse.json();
+      console.log(`Polling attempt ${attempt + 1}:`, pollData.status);
+      
+      if (pollData.status === 'Ready') {
+        if (pollData.result && pollData.result.sample) {
+          console.log('Image generation completed successfully');
+          return pollData.result.sample;
+        } else {
+          throw new Error('Generation completed but no image data found');
+        }
+      } else if (pollData.status === 'Error' || pollData.status === 'Failed') {
+        const errorMessage = pollData.error?.message || pollData.failure_reason || 'Unknown error';
+        throw new Error(`Generation failed: ${errorMessage}`);
+      }
+      
+      // Continue polling if status is 'Pending' or other non-final status
+    } catch (error) {
+      console.error(`Polling attempt ${attempt + 1} failed:`, error);
+      if (attempt === maxAttempts - 1) {
+        throw new Error(`Polling failed after ${maxAttempts} attempts: ${error.message}`);
+      }
     }
-    
-    // Continue polling if status is 'Pending' or other non-final status
   }
   
-  throw new Error('Generation timeout')
+  throw new Error(`Timeout: Image generation did not complete within ${maxAttempts} seconds`);
 }
