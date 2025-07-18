@@ -251,7 +251,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)' }}
+        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
         autoPlay
         muted
         playsInline
