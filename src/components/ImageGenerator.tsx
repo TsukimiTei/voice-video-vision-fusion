@@ -18,17 +18,11 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   onResult
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [apiKey, setApiKey] = useState('');
   const [errorLog, setErrorLog] = useState<string | null>(null);
   const [manualPrompt, setManualPrompt] = useState('');
 
-  // 从 localStorage 加载 API key 并初始化手动提示词
+  // 初始化手动提示词为语音命令
   React.useEffect(() => {
-    const savedApiKey = localStorage.getItem('bfl-api-key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-    // 初始化手动提示词为语音命令
     setManualPrompt(command);
   }, [command]);
 
@@ -230,7 +224,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
                 📋 使用说明：
               </p>
               <p className="text-blue-600 dark:text-blue-400">
-                该功能需要配置 Supabase 后端和 BFL API 密钥。请在 Supabase 项目的 Edge Functions 中配置 BFL_API_KEY 环境变量。
+                该功能使用 Supabase 后端处理图像生成，无需额外配置 API 密钥。
               </p>
             </div>
           </Card>
