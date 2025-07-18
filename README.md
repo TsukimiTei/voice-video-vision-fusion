@@ -1,73 +1,110 @@
-# Welcome to your Lovable project
+# Voice Video Vision Demo
 
-## Project info
+A minimal React app that combines video recording, speech recognition, and AI image generation using the Flux Kontext API.
 
-**URL**: https://lovable.dev/projects/f57c9de3-7344-4ebd-9d1a-77a51c2c000a
+## Features
 
-## How can I edit this code?
+- **Video Recording**: Capture video using MediaRecorder API
+- **Speech Recognition**: Real-time speech-to-text using Web Speech API
+- **Live Captions**: Display speech transcripts over video feed
+- **AI Image Generation**: Generate images from the last video frame + voice command
+- **Cross-platform**: Works on desktop and mobile browsers
 
-There are several ways of editing your application.
+## Quick Start
 
-**Use Lovable**
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f57c9de3-7344-4ebd-9d1a-77a51c2c000a) and start prompting.
+2. **Set up environment variables**:
+   Create a `.env.local` file and add your Flux Kontext API key:
+   ```
+   VITE_FLUX_KONTEXT_API_KEY=your_api_key_here
+   ```
 
-Changes made via Lovable will be committed automatically to this repo.
+3. **Start development server**:
+   ```bash
+   npm run dev
+   ```
 
-**Use your preferred IDE**
+4. **Open your browser** and navigate to the local development URL
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Environment Variables
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- `VITE_FLUX_KONTEXT_API_KEY`: Your Flux Kontext API key for image generation
 
-Follow these steps:
+## Browser Compatibility
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### ✅ Fully Supported
+- **Chrome** (Desktop & Android): All features work
+- **Edge** (Desktop): All features work
+- **Chrome Mobile** (Android): All features work
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### ⚠️ Limited Support
+- **Safari** (Desktop): Speech recognition works, but MediaRecorder API may have issues
+- **Safari iOS**: MediaRecorder API not supported, speech recognition works
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 🔧 Requirements
+- **HTTPS**: Required for camera/microphone access on mobile devices
+- **Permissions**: Camera and microphone permissions required
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## Technical Details
+
+### Core Technologies
+- **React 18**: UI framework
+- **TypeScript**: Type safety
+- **Vite**: Build tool and dev server
+- **TailwindCSS**: Styling
+
+### APIs Used
+- **MediaDevices.getUserMedia()**: Camera/microphone access
+- **MediaRecorder API**: Video recording
+- **Web Speech API**: Speech recognition
+- **Canvas API**: Frame capture from video
+- **Flux Kontext API**: AI image generation
+
+### Project Structure
+```
+src/
+├── components/
+│   └── Home.tsx              # Main component
+├── hooks/
+│   ├── useRecorder.ts        # Media recording logic
+│   └── useSpeech.ts          # Speech recognition logic
+├── types/
+│   └── speech.d.ts           # Speech API type definitions
+├── constants.ts              # Configuration constants
+└── App.tsx                   # App entry point
 ```
 
-**Edit a file directly in GitHub**
+## Manual Setup Steps
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Obtain API Key**: Sign up at [Flux Kontext](https://fluxkontext.com) to get an API key
+2. **HTTPS Setup**: For mobile testing, ensure your development server uses HTTPS
+3. **Camera Permissions**: Grant camera and microphone permissions when prompted
+4. **Test Speech**: Ensure your microphone is working and speak clearly for best recognition
 
-**Use GitHub Codespaces**
+## Usage Flow
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Click **"Start Recording"** button
+2. Grant camera/microphone permissions
+3. Speak your image generation command while recording
+4. Click **"Stop Recording"** to capture frame and generate image
+5. View the AI-generated image based on your voice command
 
-## What technologies are used for this project?
+## Troubleshooting
 
-This project is built with:
+- **No camera access**: Check browser permissions and HTTPS requirement
+- **Speech not working**: Ensure microphone permissions and speak clearly
+- **API errors**: Verify your API key is correctly set in environment variables
+- **Mobile issues**: Ensure HTTPS and try Chrome/Edge instead of Safari
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Development
 
-## How can I deploy this project?
+To extend or modify the app:
 
-Simply open [Lovable](https://lovable.dev/projects/f57c9de3-7344-4ebd-9d1a-77a51c2c000a) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Add new features**: Create new hooks or components
+- **Modify recording**: Edit `useRecorder.ts`
+- **Change speech settings**: Update `useSpeech.ts` and `constants.ts`
+- **Styling changes**: Update TailwindCSS classes in components
