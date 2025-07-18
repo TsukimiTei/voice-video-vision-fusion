@@ -45,33 +45,67 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       console.log('最终提示词:', finalPrompt);
       console.log('源图像类型:', sourceImage.startsWith('data:') ? 'base64' : 'url');
       
-      // Extract and validate base64 data from data URL
-      let base64Data = sourceImage;
-      if (sourceImage.startsWith('data:')) {
-        const base64Index = sourceImage.indexOf(',');
-        if (base64Index !== -1) {
-          base64Data = sourceImage.substring(base64Index + 1);
-        }
-      }
+      // 强化的base64数据处理和验证
+      console.log('开始处理图像数据...');
+      console.log('原始图像数据长度:', sourceImage.length);
+      console.log('原始图像数据开头:', sourceImage.substring(0, 100));
       
-      console.log('原始图像长度:', sourceImage.length);
-      console.log('处理后的base64数据长度:', base64Data.length);
-      console.log('Base64开头:', base64Data.substring(0, 50));
+      let base64Data: string;
       
-      // Validate base64 format
-      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-      if (!base64Regex.test(base64Data)) {
-        throw new Error('无效的base64格式');
-      }
-      
-      // Try to validate base64 by attempting to decode it
       try {
-        atob(base64Data);
-      } catch (e) {
-        throw new Error('Base64数据无法解码');
+        // 提取base64数据
+        if (sourceImage.startsWith('data:')) {
+          const commaIndex = sourceImage.indexOf(',');
+          if (commaIndex === -1) {
+            throw new Error('Data URL格式无效：缺少逗号分隔符');
+          }
+          base64Data = sourceImage.substring(commaIndex + 1);
+        } else {
+          base64Data = sourceImage;
+        }
+        
+        console.log('提取的base64数据长度:', base64Data.length);
+        console.log('Base64数据开头:', base64Data.substring(0, 50));
+        
+        // 清理base64字符串：移除空格、换行符等非base64字符
+        base64Data = base64Data.replace(/\s/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
+        
+        // 确保base64字符串长度是4的倍数
+        while (base64Data.length % 4 !== 0) {
+          base64Data += '=';
+        }
+        
+        console.log('清理后的base64数据长度:', base64Data.length);
+        
+        // 验证base64格式
+        if (!base64Data || base64Data.length === 0) {
+          throw new Error('Base64数据为空');
+        }
+        
+        // 使用正则验证base64格式
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Data)) {
+          throw new Error('Base64数据包含无效字符');
+        }
+        
+        // 尝试解码验证（这是最可能出错的地方）
+        try {
+          const decodedData = atob(base64Data);
+          if (decodedData.length === 0) {
+            throw new Error('解码后的数据为空');
+          }
+          console.log('Base64解码成功，解码数据长度:', decodedData.length);
+        } catch (decodeError) {
+          console.error('atob解码失败:', decodeError);
+          throw new Error(`Base64解码失败: ${decodeError.message}`);
+        }
+        
+        console.log('Base64验证完全通过');
+        
+      } catch (processingError) {
+        console.error('Base64处理错误:', processingError);
+        const errorMsg = processingError instanceof Error ? processingError.message : 'Base64处理失败';
+        throw new Error(`图像数据处理失败: ${errorMsg}`);
       }
-      
-      console.log('Base64验证通过');
       
       let requestBody;
       try {

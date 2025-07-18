@@ -141,21 +141,42 @@ export const CameraInterface: React.FC<CameraInterfaceProps> = ({ onGenerateImag
       ctx.drawImage(video, 0, 0);
       
       // 使用更兼容的方法生成图像数据
-      const imageBlob = await new Promise<Blob>((resolve) => {
+      const imageBlob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) {
             resolve(blob);
           } else {
-            throw new Error('Canvas toBlob failed');
+            reject(new Error('Canvas toBlob failed'));
           }
         }, 'image/jpeg', 0.8);
       });
       
-      // 转换为base64
-      const imageData = await new Promise<string>((resolve) => {
+      console.log('成功创建Blob，大小:', imageBlob.size);
+      
+      // 转换为base64 - 添加错误处理
+      const imageData = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(imageBlob);
+        
+        reader.onload = () => {
+          const result = reader.result as string;
+          if (result && result.length > 0) {
+            console.log('FileReader成功，数据长度:', result.length);
+            console.log('数据开头:', result.substring(0, 50));
+            resolve(result);
+          } else {
+            reject(new Error('FileReader返回空数据'));
+          }
+        };
+        
+        reader.onerror = () => {
+          reject(new Error('FileReader读取失败'));
+        };
+        
+        try {
+          reader.readAsDataURL(imageBlob);
+        } catch (e) {
+          reject(new Error('FileReader启动失败: ' + e.message));
+        }
       });
       
       console.log('成功生成图像数据，大小:', imageData.length);
