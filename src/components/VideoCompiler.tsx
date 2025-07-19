@@ -111,7 +111,19 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     // Start actual recording when in recording view
     if (stream && !mediaRecorderRef.current) {
       recordedChunksRef.current = [];
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      // Try to use mp4 codec if available, fallback to webm
+      const options = { mimeType: 'video/mp4' };
+      let mediaRecorder;
+      
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        // Fallback to webm if mp4 not supported
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      
+      mediaRecorderRef.current = mediaRecorder;
       
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -120,7 +132,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
       };
       
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/mp4' });
         setRecordedBlob(blob);
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
