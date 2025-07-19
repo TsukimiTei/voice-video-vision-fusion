@@ -45,13 +45,13 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
         clearTimeout(timeoutRef.current);
       }
       
-      // Set new timeout for 10 seconds
+      // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         console.log('Timeout triggered, isGenerating:', isGenerating);
         if (isGenerating) {
           setShowTimeoutDialog(true);
         }
-      }, 10000);
+      }, 20000);
     } else {
       console.log('Generation stopped, clearing timeout...');
       // Clear timeout when generation completes or state changes
@@ -475,7 +475,7 @@ export const VideoRecorder = ({ onBack }: VideoRecorderProps = {}) => {
           <AlertDialogHeader>
             <AlertDialogTitle>生成无响应</AlertDialogTitle>
             <AlertDialogDescription>
-              图像生成已超过10秒无响应，请重新进行录制。
+              图像生成已超过20秒无响应，请重新进行录制。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
