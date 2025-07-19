@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface VideoCompilerResult {
@@ -19,7 +19,7 @@ export const useVideoCompiler = () => {
   const [statusLog, setStatusLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<CompilerProgress | null>(null);
 
-  const compileVideo = async (videoBlob: Blob, prompt: string) => {
+  const compileVideo = useCallback(async (videoBlob: Blob, prompt: string) => {
     setIsProcessing(true);
     setError(null);
     setResult(null);
@@ -84,7 +84,7 @@ export const useVideoCompiler = () => {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, []);
 
   return {
     compileVideo,
