@@ -38,7 +38,9 @@ export async function extractLastFrameFromVideo(videoBlob: Blob): Promise<string
     };
     
     video.onerror = (error) => {
-      reject(new Error('Video loading error: ' + error));
+      console.error('Video loading error:', error);
+      const errorMsg = error instanceof Event ? error.type : String(error);
+      reject(new Error(`Video loading failed: ${errorMsg}`));
     };
     
     // Load the video
@@ -87,7 +89,9 @@ export async function extractFirstFrameFromVideo(videoBlob: Blob): Promise<strin
     };
     
     video.onerror = (error) => {
-      reject(new Error('Video loading error: ' + error));
+      console.error('Video loading error:', error);
+      const errorMsg = error instanceof Event ? error.type : String(error);
+      reject(new Error(`Video loading failed: ${errorMsg}`));
     };
     
     // Load the video
