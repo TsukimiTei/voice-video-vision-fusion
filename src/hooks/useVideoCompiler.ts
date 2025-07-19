@@ -41,13 +41,17 @@ export const useVideoCompiler = () => {
       const originalVideo = document.createElement('video');
       const generatedVideo = document.createElement('video');
       
+      // Create object URLs first
+      const originalVideoUrl = URL.createObjectURL(originalVideoBlob);
+      const generatedVideoObjectUrl = URL.createObjectURL(generatedVideoBlob);
+      
       // Load original video to get duration
       const originalDuration = await new Promise<number>((resolve, reject) => {
         originalVideo.addEventListener('loadedmetadata', () => {
           resolve(originalVideo.duration);
         });
         originalVideo.addEventListener('error', reject);
-        originalVideo.src = URL.createObjectURL(originalVideoBlob);
+        originalVideo.src = originalVideoUrl;
       });
       
       // Load generated video to get duration  
@@ -56,7 +60,7 @@ export const useVideoCompiler = () => {
           resolve(generatedVideo.duration);
         });
         generatedVideo.addEventListener('error', reject);
-        generatedVideo.src = URL.createObjectURL(generatedVideoBlob);
+        generatedVideo.src = generatedVideoObjectUrl;
       });
       
       addLog(`原始视频时长: ${originalDuration.toFixed(1)}秒, 生成视频时长: ${generatedDuration.toFixed(1)}秒`);
@@ -128,8 +132,8 @@ export const useVideoCompiler = () => {
       });
       
       // Clean up
-      URL.revokeObjectURL(originalVideo.src);
-      URL.revokeObjectURL(generatedVideo.src);
+      URL.revokeObjectURL(originalVideoUrl);
+      URL.revokeObjectURL(generatedVideoObjectUrl);
       
       // Create object URL for the merged video
       const mergedVideoUrl = URL.createObjectURL(mergedBlob);

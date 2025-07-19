@@ -16,8 +16,8 @@ export async function extractLastFrameFromVideo(videoBlob: Blob): Promise<string
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
-      // Seek to the end of the video (last frame)
-      video.currentTime = video.duration;
+      // Seek to near the end but not exactly at duration to avoid black frame
+      video.currentTime = Math.max(0, video.duration - 0.1);
     };
     
     video.onseeked = () => {
