@@ -9,7 +9,7 @@ const KLING_API_BASE_URL = 'https://api.klingai.com'
 
 interface CompileVideoRequest {
   prompt: string;
-  image_base64: string; // Changed from video_base64 to image_base64
+  image_base64: string;
 }
 
 serve(async (req) => {
@@ -26,34 +26,15 @@ serve(async (req) => {
   try {
     console.log('Request received successfully');
     
-    let body;
-    try {
-      const bodyText = await req.text();
-      console.log('Raw request body length:', bodyText.length);
-      console.log('Raw request body sample:', bodyText.substring(0, 200));
-      body = JSON.parse(bodyText);
-    } catch (jsonError) {
-      console.error('Failed to parse JSON:', jsonError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid JSON in request body',
-          details: jsonError.message
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    // Parse request body
+    const body = await req.json() as CompileVideoRequest;
+    const { prompt, image_base64 } = body;
     
-    const { prompt, image_base64 }: CompileVideoRequest = body;
-    
-    console.log('Request parsed successfully:', { 
-      prompt: prompt ? prompt.substring(0, 100) + '...' : 'undefined', 
-      imageSize: image_base64 ? image_base64.length : 0,
-      hasPrompt: !!prompt,
-      hasImage: !!image_base64
+    console.log('Request parsed:', { 
+      hasPrompt: !!prompt, 
+      hasImage: !!image_base64,
+      promptLength: prompt?.length || 0,
+      imageLength: image_base64?.length || 0
     });
 
     if (!prompt || !image_base64) {
@@ -70,8 +51,8 @@ serve(async (req) => {
       );
     }
 
-    // Check image size (base64 should be reasonable size)
-    const imageSizeMB = (image_base64.length * 3 / 4) / (1024 * 1024); // Convert base64 to actual size
+    // Check image size
+    const imageSizeMB = (image_base64.length * 3 / 4) / (1024 * 1024);
     console.log(`Image size: ${imageSizeMB.toFixed(2)} MB`);
     
     if (imageSizeMB > 10) {
@@ -90,7 +71,7 @@ serve(async (req) => {
 
     console.log('Processing image with Kling AI...');
     
-    // Call Kling AI API directly with image data
+    // Call Kling AI API
     const klingResponse = await callKlingAI(image_base64, prompt);
     
     console.log('Kling AI response received:', { success: klingResponse.success });
@@ -111,9 +92,6 @@ serve(async (req) => {
     
     console.log('Video generated successfully');
     
-    // Return the generated video URL directly (no merging needed for image-to-video)
-    console.log('Video compilation completed successfully');
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -127,12 +105,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Critical error in compile-video function:', error);
-    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error',
-        stack: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Internal server error'
       }),
       { 
         status: 500, 
@@ -142,13 +118,15 @@ serve(async (req) => {
   }
 });
 
-// Call official Kling AI API for image-to-video generation
+// Call Kling AI API for image-to-video generation
 async function callKlingAI(imageBase64: string, prompt: string) {
   const accessKey = Deno.env.get('KLING_ACCESS_KEY');
   const secretKey = Deno.env.get('KLING_SECRET_KEY');
   
-  console.log('Access Key found:', !!accessKey);
-  console.log('Secret Key found:', !!secretKey);
+  console.log('Kling AI credentials check:', { 
+    hasAccessKey: !!accessKey, 
+    hasSecretKey: !!secretKey 
+  });
   
   if (!accessKey || !secretKey) {
     console.error('Kling AI API keys not configured');
@@ -159,14 +137,13 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 
   try {
-    console.log('Calling official Kling AI API for image-to-video generation...');
+    console.log('Generating JWT token for Kling AI...');
     
     // Generate JWT token for authentication
     const jwtToken = await generateKlingJWT(accessKey, secretKey);
     console.log('JWT token generated successfully');
     
-    // Prepare the request body for official Kling AI API
-    // Remove data: prefix if present
+    // Clean image base64 (remove data: prefix if present)
     let cleanImageBase64 = imageBase64;
     if (imageBase64.startsWith('data:')) {
       const base64Index = imageBase64.indexOf(',');
@@ -176,15 +153,15 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     }
     
     const requestBody = {
-      model_name: "kling-v1", // Use kling-v1 model
-      mode: "std", // Standard mode (5 seconds)
+      model_name: "kling-v1",
+      mode: "std",
       duration: "5",
-      image: cleanImageBase64, // Base64 encoded image data (no data: prefix)
+      image: cleanImageBase64,
       prompt: prompt,
       cfg_scale: 0.5
     };
 
-    console.log('Sending request to official Kling AI API...');
+    console.log('Sending request to Kling AI API...');
     console.log('Request body prepared with prompt:', prompt.substring(0, 50) + '...');
     
     const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video`, {
@@ -196,8 +173,7 @@ async function callKlingAI(imageBase64: string, prompt: string) {
       body: JSON.stringify(requestBody)
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Kling API response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -234,76 +210,58 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 }
 
-// Generate JWT token according to official Kling AI documentation
+// Generate JWT token for Kling AI authentication
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
-  // Get current timestamp in seconds (matching Python's int(time.time()))
   const currentTime = Math.floor(Date.now() / 1000);
   
-  // Header exactly as specified in official docs
   const header = {
     "alg": "HS256",
     "typ": "JWT"
   };
   
-  // Payload exactly as specified in official docs
   const payload = {
     "iss": accessKey,
-    "exp": currentTime + 1800, // Current time + 30 minutes
-    "nbf": currentTime - 5     // Current time - 5 seconds
+    "exp": currentTime + 1800, // 30 minutes
+    "nbf": currentTime - 5     // 5 seconds ago
   };
   
-  console.log('JWT generation (following official docs):');
-  console.log('- Current timestamp:', currentTime);
-  console.log('- Access key:', accessKey);
-  console.log('- Secret key length:', secretKey ? secretKey.length : 0);
-  console.log('- Header:', JSON.stringify(header));
-  console.log('- Payload:', JSON.stringify(payload));
+  console.log('JWT generation:', {
+    currentTime,
+    accessKey: accessKey.substring(0, 8) + '...',
+    secretKeyLength: secretKey.length
+  });
   
-  // Encode header and payload using base64url
+  // Base64url encode header and payload
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
   
-  console.log('- Encoded header:', encodedHeader);
-  console.log('- Encoded payload:', encodedPayload);
-  
-  // Create the message to sign (header.payload)
+  // Create message to sign
   const message = `${encodedHeader}.${encodedPayload}`;
-  console.log('- Message to sign:', message);
   
-  // Create signature using HMAC SHA256
+  // Create signature
   const signature = await createHmacSha256Signature(message, secretKey);
-  console.log('- Signature:', signature.substring(0, 20) + '...');
   
-  // Construct final JWT token
-  const token = `${message}.${signature}`;
-  console.log('- Final JWT token length:', token.length);
-  console.log('- Final JWT token:', token);
-  
-  return token;
+  return `${message}.${signature}`;
 }
 
-// Base64url encoding following RFC 4648 Section 5
+// Base64url encoding
 function base64urlEncode(str: string): string {
-  // Convert string to bytes using TextEncoder
   const encoder = new TextEncoder();
   const bytes = encoder.encode(str);
   
-  // Create binary string from bytes
   let binaryString = '';
   for (let i = 0; i < bytes.length; i++) {
     binaryString += String.fromCharCode(bytes[i]);
   }
   
-  // Base64 encode and convert to base64url
   const base64 = btoa(binaryString);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Create HMAC SHA256 signature following RFC standards
+// Create HMAC SHA256 signature
 async function createHmacSha256Signature(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   
-  // Import the secret key
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secret),
@@ -312,31 +270,27 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
     ['sign']
   );
   
-  // Create signature
   const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   const signatureBytes = new Uint8Array(signatureBuffer);
   
-  // Convert to binary string first
   let binaryString = '';
   for (let i = 0; i < signatureBytes.length; i++) {
     binaryString += String.fromCharCode(signatureBytes[i]);
   }
   
-  // Base64 encode and convert to base64url
   const base64 = btoa(binaryString);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Poll official Kling AI task status until completion
+// Poll Kling AI task status until completion
 async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey: string): Promise<string> {
-  const maxAttempts = 30; // 5 minutes max
+  const maxAttempts = 30;
   let attempts = 0;
   
   while (attempts < maxAttempts) {
     try {
       console.log(`Polling task status, attempt ${attempts + 1}/${maxAttempts}`);
       
-      // Generate JWT token for each request
       const jwtToken = await generateKlingJWT(accessKey, secretKey);
       
       const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video/${taskId}`, {
@@ -361,7 +315,6 @@ async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey:
         } else if (taskStatus === 'failed') {
           throw new Error(`Video generation failed: ${result.data.task_status_msg || 'Unknown error'}`);
         }
-        // Continue polling if status is 'submitted' or 'processing'
       } else {
         console.error('Unexpected response format:', result);
       }
