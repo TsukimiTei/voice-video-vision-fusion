@@ -46,73 +46,67 @@ const HomePage: React.FC = () => {
               </p>
             </div>
             
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center">选择功能</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* 主要功能 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button 
-                    onClick={() => setCurrentView('video-compiler')}
-                    className="h-32 text-left"
-                    variant="outline"
-                  >
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-semibold">视频编译器</h3>
-                      <p className="text-sm text-muted-foreground">录制视频并生成AI续集</p>
-                    </div>
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setCurrentView('task-history')}
-                    className="h-32 text-left"
-                    variant="outline"
-                  >
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-semibold">任务历史</h3>
-                      <p className="text-sm text-muted-foreground">查看过往视频生成记录</p>
-                    </div>
-                  </Button>
-                </div>
-                
-                {/* 其他工具 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button 
-                    onClick={() => setCurrentView('recorder')}
-                    className="h-24 text-left"
-                    variant="outline"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="font-semibold">视频录制</h4>
-                      <p className="text-xs text-muted-foreground">录制并生成图像</p>
-                    </div>
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setCurrentView('image-editor')}
-                    className="h-24 text-left"
-                    variant="outline"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="font-semibold">图像编辑</h4>
-                      <p className="text-xs text-muted-foreground">AI智能图像处理</p>
-                    </div>
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setCurrentView('jwt-tester')}
-                    className="h-24 text-left"
-                    variant="outline"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="font-semibold">JWT 测试</h4>
-                      <p className="text-xs text-muted-foreground">API认证测试</p>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('video-compiler')}>
+                <CardContent className="p-0 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🎬</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">视频编译器</h3>
+                    <p className="text-sm text-muted-foreground">录制视频并生成AI续集</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('task-history')}>
+                <CardContent className="p-0 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">📋</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">任务历史</h3>
+                    <p className="text-sm text-muted-foreground">查看过往视频生成记录</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('recorder')}>
+                <CardContent className="p-0 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">📹</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">视频录制</h3>
+                    <p className="text-sm text-muted-foreground">录制并生成图像</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('image-editor')}>
+                <CardContent className="p-0 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🎨</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">图像编辑</h3>
+                    <p className="text-sm text-muted-foreground">AI智能图像处理</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('jwt-tester')}>
+                <CardContent className="p-0 text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-2xl">🔑</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">JWT 测试</h3>
+                    <p className="text-sm text-muted-foreground">API认证测试</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
