@@ -220,7 +220,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   useEffect(() => {
     const currentTranscript = confirmedTranscript || finalTranscript;
     
-    if (viewState === 'processing' && recordedBlob && !isProcessing && !result) {
+    if (viewState === 'processing' && recordedBlob && !isProcessing && !result && !compilerError) {
       // Check if we have meaningful speech input before compilation
       if (!currentTranscript || currentTranscript.trim().length < 3) {
         console.log('No valid transcript found in processing, showing dialog');
@@ -232,7 +232,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
       console.log('Auto-triggering compilation with transcript:', currentTranscript);
       compileVideo(recordedBlob, currentTranscript);
     }
-  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result]);
+  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result, compilerError, compileVideo]);
 
   if (viewState === 'home') {
     return (
