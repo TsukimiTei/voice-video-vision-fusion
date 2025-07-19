@@ -75,13 +75,13 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         clearTimeout(timeoutRef.current);
       }
       
-      // Set new timeout for 30 seconds (video processing might take longer)
+      // Set new timeout for 6 minutes (video processing typically takes 2-5 minutes)
       timeoutRef.current = setTimeout(() => {
         console.log('Timeout triggered, isProcessing:', isProcessing);
         if (isProcessing) {
           setShowTimeoutDialog(true);
         }
-      }, 30000);
+      }, 360000); // 6 minutes
     } else {
       console.log('Video compilation stopped, clearing timeout...');
       // Clear timeout when processing completes or state changes
@@ -510,9 +510,9 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         <AlertDialog open={showTimeoutDialog} onOpenChange={setShowTimeoutDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>编译无响应</AlertDialogTitle>
+              <AlertDialogTitle>编译超时</AlertDialogTitle>
               <AlertDialogDescription>
-                视频编译时间过长，请重新录制并尝试。
+                视频编译超过6分钟，可能服务器繁忙或遇到技术问题。建议尝试重新录制或稍后再试。
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
