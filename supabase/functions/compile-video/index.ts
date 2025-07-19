@@ -26,59 +26,60 @@ serve(async (req) => {
   try {
     console.log('Request received successfully');
     
-    // Parse request body
-    const body = await req.json() as CompileVideoRequest;
-    const { prompt, image_base64 } = body;
-    
-    console.log('Request parsed:', { 
-      hasPrompt: !!prompt, 
-      hasImage: !!image_base64,
-      promptLength: prompt?.length || 0,
-      imageLength: image_base64?.length || 0
+    // Add timeout for the entire request
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Function timeout after 9 minutes')), 9 * 60 * 1000);
     });
+    
+    const processPromise = async () => {
+      // Parse request body with error handling
+      let body: CompileVideoRequest;
+      try {
+        body = await req.json() as CompileVideoRequest;
+      } catch (parseError) {
+        console.error('Failed to parse request body:', parseError);
+        throw new Error('Invalid JSON in request body');
+      }
+      
+      const { prompt, image_base64 } = body;
+      
+      console.log('Request parsed:', { 
+        hasPrompt: !!prompt, 
+        hasImage: !!image_base64,
+        promptLength: prompt?.length || 0,
+        imageLength: image_base64?.length || 0
+      });
 
-    if (!prompt || !image_base64) {
-      console.error('Missing required fields:', { hasPrompt: !!prompt, hasImage: !!image_base64 });
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Missing required fields: prompt and image_base64 are required' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+      if (!prompt || !image_base64) {
+        console.error('Missing required fields:', { hasPrompt: !!prompt, hasImage: !!image_base64 });
+        throw new Error('Missing required fields: prompt and image_base64 are required');
+      }
 
-    console.log('Processing image with Kling AI...');
+      console.log('Processing image with Kling AI...');
+      
+      // Call Kling AI API
+      const klingResponse = await callKlingAI(image_base64, prompt);
+      
+      console.log('Kling AI response received:', { success: klingResponse.success });
+      
+      if (!klingResponse.success) {
+        console.error('Kling AI API failed:', klingResponse.error);
+        throw new Error(klingResponse.error || 'Video generation failed');
+      }
+      
+      console.log('Video generated successfully');
+      
+      return {
+        success: true,
+        videoUrl: klingResponse.videoUrl
+      };
+    };
     
-    // Call Kling AI API
-    const klingResponse = await callKlingAI(image_base64, prompt);
-    
-    console.log('Kling AI response received:', { success: klingResponse.success });
-    
-    if (!klingResponse.success) {
-      console.error('Kling AI API failed:', klingResponse.error);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: klingResponse.error || 'Video generation failed' 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-    
-    console.log('Video generated successfully');
+    // Race between the actual process and timeout
+    const result = await Promise.race([processPromise(), timeoutPromise]);
     
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        videoUrl: klingResponse.videoUrl 
-      }),
+      JSON.stringify(result),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -87,13 +88,24 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Critical error in compile-video function:', error);
+    
+    // Determine appropriate status code
+    let statusCode = 500;
+    let errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    
+    if (errorMessage.includes('Missing required fields') || errorMessage.includes('Invalid JSON')) {
+      statusCode = 400;
+    } else if (errorMessage.includes('timeout')) {
+      statusCode = 408;
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: errorMessage
       }),
       { 
-        status: 500, 
+        status: statusCode, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
@@ -177,9 +189,20 @@ async function callKlingAI(imageBase64: string, prompt: string) {
         statusText: response.statusText,
         errorText: errorText
       });
+      
+      // Parse error if it's JSON
+      let errorMessage = `${response.status} ${response.statusText}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // If not JSON, use the raw text
+        errorMessage = errorText || errorMessage;
+      }
+      
       return {
         success: false,
-        error: `Kling AI API error: ${response.status} ${response.statusText} - ${errorText}`
+        error: `Kling AI API error: ${errorMessage}`
       };
     }
 
