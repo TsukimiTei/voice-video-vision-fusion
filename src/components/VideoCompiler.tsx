@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, RotateCcw } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useVideoCompiler } from '../hooks/useVideoCompiler';
@@ -21,6 +21,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   const [showNoSpeechDialog, setShowNoSpeechDialog] = useState(false);
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [showModerationDialog, setShowModerationDialog] = useState(false);
+  const [isVideoRecording, setIsVideoRecording] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -123,6 +124,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
       };
       
       mediaRecorderRef.current.start();
+      setIsVideoRecording(true);
     }
   };
 
@@ -130,6 +132,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current = null;
+      setIsVideoRecording(false);
     }
   };
 
@@ -266,7 +269,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
             />
             
             {/* Recording Indicator */}
-            {isCameraRecording && (
+            {isVideoRecording && (
               <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2 shadow-lg">
                 <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                 录制中
@@ -292,7 +295,9 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
             {/* Record Button - Center */}
             <div className="relative">
               <div 
-                className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none"
+                className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none ${
+                  isVideoRecording ? 'bg-red-500' : 'bg-purple-500'
+                }`}
                 onMouseDown={handleStartRecording}
                 onMouseUp={handleStopRecording}
                 onMouseLeave={handleStopRecording}
@@ -304,8 +309,13 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
             </div>
             
             {/* Camera Switch Button - Right of record button */}
-            <Button onClick={switchCamera} variant="outline" size="sm" className="ml-4">
-              {facingMode === 'user' ? '后置' : '前置'}
+            <Button 
+              onClick={switchCamera} 
+              variant="outline" 
+              size="icon"
+              className="w-12 h-12 rounded-full ml-4"
+            >
+              <RotateCcw className="h-5 w-5" />
             </Button>
           </div>
           
