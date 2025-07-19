@@ -3,9 +3,10 @@ import { HomePage } from './components/HomePage';
 import { VideoRecorder } from './components/VideoRecorder';
 import { ImageEditor } from './components/ImageEditor';
 import { VideoCompiler } from './components/VideoCompiler';
+import { JWTTester } from './components/JWTTester';
 import { Toaster } from './components/ui/sonner';
 
-type AppState = 'home' | 'video' | 'image' | 'compiler';
+type AppState = 'home' | 'video' | 'image' | 'compiler' | 'jwt-test';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppState>('home');
@@ -18,6 +19,7 @@ function App() {
             onVideoRecord={() => setCurrentView('video')}
             onImageEdit={() => setCurrentView('image')}
             onVideoCompile={() => setCurrentView('compiler')}
+            onJWTTest={() => setCurrentView('jwt-test')}
           />
         );
       case 'video':
@@ -26,12 +28,15 @@ function App() {
         return <ImageEditor onBack={() => setCurrentView('home')} />;
       case 'compiler':
         return <VideoCompiler onBack={() => setCurrentView('home')} />;
+      case 'jwt-test':
+        return <JWTTester />;
       default:
         return (
           <HomePage 
             onVideoRecord={() => setCurrentView('video')}
             onImageEdit={() => setCurrentView('image')}
             onVideoCompile={() => setCurrentView('compiler')}
+            onJWTTest={() => setCurrentView('jwt-test')}
           />
         );
     }

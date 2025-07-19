@@ -1,14 +1,15 @@
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { Camera, ImageIcon, Wand2, Video } from 'lucide-react';
+import { Camera, ImageIcon, Wand2, Video, TestTube } from 'lucide-react';
 
 interface HomePageProps {
   onVideoRecord: () => void;
   onImageEdit: () => void;
   onVideoCompile: () => void;
+  onJWTTest: () => void;
 }
 
-export const HomePage = ({ onVideoRecord, onImageEdit, onVideoCompile }: HomePageProps) => {
+export const HomePage = ({ onVideoRecord, onImageEdit, onVideoCompile, onJWTTest }: HomePageProps) => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="p-8 max-w-2xl w-full text-center space-y-8">
@@ -76,6 +77,22 @@ export const HomePage = ({ onVideoRecord, onImageEdit, onVideoCompile }: HomePag
             </div>
           </Card>
         </div>
+        
+        {/* JWT 测试器 */}
+        <Card className="p-4 border border-dashed border-muted-foreground/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TestTube className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <h4 className="font-medium text-sm">JWT 测试器</h4>
+                <p className="text-xs text-muted-foreground">生成和验证 Kling AI JWT Token</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={onJWTTest}>
+              测试
+            </Button>
+          </div>
+        </Card>
         
         <div className="pt-4">
           <p className="text-xs text-muted-foreground">
