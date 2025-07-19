@@ -57,6 +57,8 @@ export const useVideoCompiler = () => {
       addLog("开始提交视频编译请求...");
       setProgress({ stage: 'video_generation', progress: 50 });
       
+      console.log('About to call compile-video function with:', { prompt, imageLength: imageBase64.length });
+      
       // Call Supabase Edge Function for video compilation
       const { data: compileData, error: compileError } = await supabase.functions.invoke('compile-video', {
         body: {
@@ -66,11 +68,13 @@ export const useVideoCompiler = () => {
       });
 
       console.log('Supabase response:', { compileData, compileError });
+      console.log('CompileData type:', typeof compileData);
+      console.log('CompileError type:', typeof compileError);
 
       if (compileError) {
-        console.error('Supabase function error:', compileError);
-        addLog(`❌ Supabase 函数调用失败: ${compileError.message}`);
-        throw new Error(`API 调用失败: ${compileError.message}`);
+        console.error('Supabase function error details:', compileError);
+        addLog(`❌ Supabase 函数调用失败: ${compileError.message || JSON.stringify(compileError)}`);
+        throw new Error(`Edge Function调用失败: ${compileError.message || 'Unknown error'}`);
       }
 
       addLog(`📡 收到 Edge Function 响应`);

@@ -15,7 +15,7 @@ interface CompileVideoRequest {
 serve(async (req) => {
   console.log('=== Compile Video Function Started ===');
   console.log('Request method:', req.method);
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  console.log('Request URL:', req.url);
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -24,7 +24,19 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting compile video request...');
+    console.log('Request received successfully');
+    
+    // Test response first
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Function is reachable',
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
     
     let body;
     try {
