@@ -29,12 +29,10 @@ export const useImageGeneration = () => {
       
       addLog("开始提交图像生成请求...");
       
-      // Step 1: Submit generation request via Supabase Edge Function
-      const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-image-edit', {
+      // Step 1: Submit generation request via Supabase Edge Function for text-to-image
+      const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-text-to-image', {
         body: {
-          prompt,
-          input_image: imageBase64
-          // aspect_ratio will be automatically calculated from input image
+          prompt
         }
       });
 
@@ -45,10 +43,10 @@ export const useImageGeneration = () => {
 
       addLog(`📡 收到 Edge Function 响应`);
       
-      if (submitData.success && submitData.imageUrl) {
+      if (submitData.success && submitData.data) {
         addLog("✅ 图像生成完成！");
         setResult({
-          imageUrl: submitData.imageUrl,
+          imageUrl: submitData.data,
           prompt
         });
         addLog("🎉 图像下载成功！");
