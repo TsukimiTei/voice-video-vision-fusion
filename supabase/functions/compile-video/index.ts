@@ -127,27 +127,22 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     const jwtToken = await generateKlingJWT(accessKey, secretKey);
     console.log('JWT token generated successfully');
     
-    // Convert base64 image to URL for Kling AI API
-    // Kling AI expects image URL, but we'll try with base64 first
-    // If base64 doesn't work, we might need to upload to a temporary storage
-    let imageData = imageBase64;
+    // Convert base64 to data URL format that Kling AI expects
+    let imageDataUrl = imageBase64;
     
-    // Remove data: prefix if present
-    if (imageBase64.startsWith('data:')) {
-      const base64Index = imageBase64.indexOf(',');
-      if (base64Index !== -1) {
-        imageData = imageBase64.substring(base64Index + 1);
-      }
+    // Ensure it has the proper data URL format
+    if (!imageBase64.startsWith('data:')) {
+      imageDataUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
     
     // Prepare request body according to official API documentation
     const requestBody = {
-      model_name: "kling-v1",
-      mode: "pro", // Using pro mode for better quality
-      duration: "5", // 5 seconds
-      image: imageData, // Try with base64 first
-      prompt: prompt,
-      cfg_scale: 0.5
+      "model_name": "kling-v1",
+      "mode": "pro",
+      "duration": "5",
+      "image": imageDataUrl,
+      "prompt": prompt,
+      "cfg_scale": 0.5
     };
 
     console.log('Sending request to official Kling AI API...');
@@ -156,7 +151,7 @@ async function callKlingAI(imageBase64: string, prompt: string) {
       model: requestBody.model_name,
       mode: requestBody.mode,
       prompt: prompt.substring(0, 100) + '...',
-      imageDataLength: imageData.length
+      imageDataLength: imageDataUrl.length
     });
     
     const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video`, {
