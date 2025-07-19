@@ -77,9 +77,9 @@ serve(async (req) => {
   }
 });
 
-// Generate JWT token for Kling AI authentication
+// Generate JWT token for Kling AI authentication - exactly matching compile-video logic
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
+  const currentTime = Math.floor(Date.now() / 1000);
   
   const header = {
     alg: "HS256",
@@ -88,35 +88,49 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
   
   const payload = {
     iss: accessKey,
-    exp: now + 1800, // Valid for 30 minutes
-    nbf: now - 5 // Valid from 5 seconds ago
+    exp: currentTime + 1800, // Valid for 30 minutes
+    nbf: currentTime - 5 // Valid from 5 seconds ago
   };
   
-  console.log('JWT payload:', payload);
+  console.log('JWT generation details:');
+  console.log('- Current timestamp:', currentTime);
+  console.log('- Access key:', accessKey);
+  console.log('- Secret key length:', secretKey ? secretKey.length : 0);
+  console.log('- Payload:', JSON.stringify(payload));
   
-  // Base64URL encode header and payload
+  // Use standard btoa for base64url encoding
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
   
-  // Create signature
+  console.log('- Encoded header:', encodedHeader);
+  console.log('- Encoded payload:', encodedPayload);
+  
+  // Create signature using HMAC SHA256
   const message = `${encodedHeader}.${encodedPayload}`;
+  console.log('- Message to sign:', message);
+  
   const signature = await createHmacSha256Signature(message, secretKey);
+  console.log('- Signature:', signature.substring(0, 20) + '...');
   
   const token = `${message}.${signature}`;
-  console.log('Generated JWT token:', token);
+  console.log('- Final JWT token:', token);
   
   return token;
 }
 
-// Base64URL encode (without padding)
+// Simple base64url encode using native btoa
 function base64urlEncode(str: string): string {
+  // Use native btoa which handles UTF-8 properly
   const base64 = btoa(str);
+  // Convert to base64url format
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 // Create HMAC SHA256 signature
 async function createHmacSha256Signature(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
+  
+  // Import the secret key
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secret),
@@ -125,7 +139,10 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
     ['sign']
   );
   
+  // Create signature
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  
+  // Convert to base64url using native btoa
   const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
   return base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }

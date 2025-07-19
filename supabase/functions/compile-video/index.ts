@@ -249,54 +249,37 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
     nbf: currentTime - 5 // Valid from 5 seconds ago
   };
   
-  console.log('JWT payload:', JSON.stringify(payload));
-  console.log('Current timestamp:', currentTime);
-  console.log('Access key:', accessKey);
-  console.log('Secret key length:', secretKey ? secretKey.length : 0);
+  console.log('JWT generation details:');
+  console.log('- Current timestamp:', currentTime);
+  console.log('- Access key:', accessKey);
+  console.log('- Secret key length:', secretKey ? secretKey.length : 0);
+  console.log('- Payload:', JSON.stringify(payload));
   
-  // Base64URL encode header and payload
+  // Use standard btoa for base64url encoding
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
   
+  console.log('- Encoded header:', encodedHeader);
+  console.log('- Encoded payload:', encodedPayload);
+  
   // Create signature using HMAC SHA256
   const message = `${encodedHeader}.${encodedPayload}`;
+  console.log('- Message to sign:', message);
+  
   const signature = await createHmacSha256Signature(message, secretKey);
+  console.log('- Signature:', signature.substring(0, 20) + '...');
   
   const token = `${message}.${signature}`;
-  console.log('Final JWT token length:', token.length);
-  console.log('JWT parts:', {
-    header: encodedHeader,
-    payload: encodedPayload,
-    signature: signature.substring(0, 10) + '...'
-  });
+  console.log('- Final JWT token:', token);
   
   return token;
 }
 
-// Base64URL encode (without padding)
+// Simple base64url encode using native btoa
 function base64urlEncode(str: string): string {
-  // Convert string to bytes using TextEncoder
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  
-  // Convert to base64
-  let base64 = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  
-  for (let i = 0; i < data.length; i += 3) {
-    const a = data[i];
-    const b = i + 1 < data.length ? data[i + 1] : 0;
-    const c = i + 2 < data.length ? data[i + 2] : 0;
-    
-    const bitmap = (a << 16) | (b << 8) | c;
-    
-    base64 += chars.charAt((bitmap >> 18) & 63);
-    base64 += chars.charAt((bitmap >> 12) & 63);
-    base64 += i + 1 < data.length ? chars.charAt((bitmap >> 6) & 63) : '=';
-    base64 += i + 2 < data.length ? chars.charAt(bitmap & 63) : '=';
-  }
-  
-  // Convert to base64url (replace +/= with -_)
+  // Use native btoa which handles UTF-8 properly
+  const base64 = btoa(str);
+  // Convert to base64url format
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
@@ -316,26 +299,9 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
   // Create signature
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   
-  // Convert to base64url
-  const uint8Array = new Uint8Array(signature);
-  let base64 = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  
-  for (let i = 0; i < uint8Array.length; i += 3) {
-    const a = uint8Array[i];
-    const b = i + 1 < uint8Array.length ? uint8Array[i + 1] : 0;
-    const c = i + 2 < uint8Array.length ? uint8Array[i + 2] : 0;
-    
-    const bitmap = (a << 16) | (b << 8) | c;
-    
-    base64 += chars.charAt((bitmap >> 18) & 63);
-    base64 += chars.charAt((bitmap >> 12) & 63);
-    base64 += i + 1 < uint8Array.length ? chars.charAt((bitmap >> 6) & 63) : '=';
-    base64 += i + 2 < uint8Array.length ? chars.charAt(bitmap & 63) : '=';
-  }
-  
-  // Convert to base64url
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  // Convert to base64url using native btoa
+  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
+  return base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 // Poll official Kling AI task status until completion
