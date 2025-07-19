@@ -1,1 +1,16 @@
 project_id = "ynnqilrwqiqvcpddeorb"
+
+[functions.compile-video]
+verify_jwt = false
+
+[functions.test-kling-jwt]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.generate-image-edit]
+verify_jwt = false
+
+[functions.translate-to-english]
+verify_jwt = false
