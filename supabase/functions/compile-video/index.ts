@@ -150,13 +150,20 @@ async function callKlingAI(imageBase64: string, prompt: string) {
       }
     }
     
+    console.log('Image base64 format check:', {
+      originalLength: imageBase64.length,
+      pureBase64Length: pureBase64.length,
+      isDataUrl: imageBase64.startsWith('data:')
+    });
+    
     // Prepare request body according to official API documentation
-    // Note: Kling AI expects pure base64 string, not data URL
+    // For Kling API: image should be a URL, not base64
+    // We need to upload the image first or use a different approach
     const requestBody = {
       "model_name": "kling-v1", 
       "mode": "pro",
       "duration": "5",
-      "image": pureBase64,  // Pure base64 string without data URL prefix
+      "image": `data:image/jpeg;base64,${pureBase64}`,  // Use data URL format as per some examples
       "prompt": prompt,
       "cfg_scale": 0.5
     };
