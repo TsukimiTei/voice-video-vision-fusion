@@ -42,7 +42,9 @@ serve(async (req) => {
     
     console.log('Request parsed successfully:', { 
       prompt: prompt ? prompt.substring(0, 100) + '...' : 'undefined', 
-      imageSize: image_base64 ? image_base64.length : 0 
+      imageSize: image_base64 ? image_base64.length : 0,
+      hasPrompt: !!prompt,
+      hasImage: !!image_base64
     });
 
     if (!prompt || !image_base64) {

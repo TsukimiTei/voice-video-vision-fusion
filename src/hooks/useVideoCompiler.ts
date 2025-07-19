@@ -65,7 +65,10 @@ export const useVideoCompiler = () => {
         }
       });
 
+      console.log('Supabase response:', { compileData, compileError });
+
       if (compileError) {
+        console.error('Supabase function error:', compileError);
         addLog(`❌ Supabase 函数调用失败: ${compileError.message}`);
         throw new Error(`API 调用失败: ${compileError.message}`);
       }
