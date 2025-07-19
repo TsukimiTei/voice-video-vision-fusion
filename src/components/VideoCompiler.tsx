@@ -22,6 +22,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [showModerationDialog, setShowModerationDialog] = useState(false);
   const [isVideoRecording, setIsVideoRecording] = useState(false);
+  const [confirmedTranscript, setConfirmedTranscript] = useState<string>('');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -56,6 +57,14 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     statusLog,
     progress
   } = useVideoCompiler();
+
+  // Update confirmed transcript when finalTranscript changes
+  useEffect(() => {
+    if (finalTranscript && finalTranscript.trim().length > 0) {
+      setConfirmedTranscript(finalTranscript);
+      console.log('Confirmed transcript updated:', finalTranscript);
+    }
+  }, [finalTranscript]);
 
   // Monitor processing state and set timeout for unresponsive generation
   useEffect(() => {
@@ -93,6 +102,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     if (viewState !== 'recording') {
       setViewState('recording');
       resetTranscript();
+      setConfirmedTranscript('');
       await startCamera();
       await startListening();
       return;
@@ -115,16 +125,21 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         
-        // Use a timeout to check finalTranscript after speech recognition has time to finalize
+        // Use a timeout to check confirmedTranscript after speech recognition has time to finalize
         setTimeout(() => {
+          const currentTranscript = confirmedTranscript || finalTranscript;
+          console.log('Checking transcript after recording stop:', currentTranscript);
+          
           // Check if we have meaningful speech input
-          if (!finalTranscript || finalTranscript.trim().length < 3) {
+          if (!currentTranscript || currentTranscript.trim().length < 3) {
+            console.log('No valid transcript found, showing dialog');
             setShowNoSpeechDialog(true);
             return;
           }
           
+          console.log('Valid transcript found, proceeding to processing');
           setViewState('processing');
-        }, 500); // Give 500ms for speech recognition to finalize
+        }, 1000); // Give 1 second for speech recognition to finalize
       };
       
       mediaRecorderRef.current.start();
@@ -141,21 +156,23 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   };
 
   const handleCompileVideo = useCallback(async () => {
-    if (!recordedBlob || !finalTranscript) {
+    const currentTranscript = confirmedTranscript || finalTranscript;
+    
+    if (!recordedBlob || !currentTranscript) {
       toast.error('录制视频或语音指令缺失');
       return;
     }
 
     try {
-      console.log('Starting video compilation with transcript:', finalTranscript);
-      await compileVideo(recordedBlob, finalTranscript);
+      console.log('Starting video compilation with transcript:', currentTranscript);
+      await compileVideo(recordedBlob, currentTranscript);
     } catch (error) {
       console.error('Video compilation failed:', error);
       if (error instanceof Error && error.message.includes('Request Moderated')) {
         setShowModerationDialog(true);
       }
     }
-  }, [recordedBlob, finalTranscript, compileVideo]);
+  }, [recordedBlob, confirmedTranscript, finalTranscript, compileVideo]);
 
   const handleReset = () => {
     // Clear any running timeout
@@ -166,6 +183,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     
     setViewState('home');
     setRecordedBlob(null);
+    setConfirmedTranscript('');
     if (recordedVideoUrl) {
       URL.revokeObjectURL(recordedVideoUrl);
       setRecordedVideoUrl(null);
@@ -183,6 +201,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     
     setViewState('home');
     resetTranscript();
+    setConfirmedTranscript('');
     toast.success('编译已取消');
   };
 
@@ -194,6 +213,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     stopListening();
     setViewState('home');
     resetTranscript();
+    setConfirmedTranscript('');
   };
 
   const handleDownloadResult = () => {
@@ -210,11 +230,13 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
 
   // Auto-trigger compilation when we have both video and transcript
   useEffect(() => {
-    if (viewState === 'processing' && recordedBlob && finalTranscript && !isProcessing && !result) {
-      console.log('Auto-triggering compilation with finalTranscript:', finalTranscript);
+    const currentTranscript = confirmedTranscript || finalTranscript;
+    
+    if (viewState === 'processing' && recordedBlob && currentTranscript && !isProcessing && !result) {
+      console.log('Auto-triggering compilation with transcript:', currentTranscript);
       handleCompileVideo();
     }
-  }, [viewState, recordedBlob, finalTranscript, isProcessing, result, handleCompileVideo]);
+  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result]);
 
   if (viewState === 'home') {
     return (
@@ -283,13 +305,13 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
             )}
             
             {/* Voice Command Overlay - show confirmed and current transcript */}
-            {(finalTranscript || transcript) && (
+            {(confirmedTranscript || finalTranscript || transcript) && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                   <div className="space-y-2">
-                    {finalTranscript && (
+                    {(confirmedTranscript || finalTranscript) && (
                       <p className="text-white text-sm leading-relaxed font-medium">
-                        确认: {finalTranscript}
+                        确认: {confirmedTranscript || finalTranscript}
                       </p>
                     )}
                     {transcript && (
@@ -384,7 +406,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <p><strong>语音指令：</strong> {finalTranscript}</p>
+                  <p><strong>语音指令：</strong> {confirmedTranscript || finalTranscript}</p>
                 </div>
               </div>
             </Card>
