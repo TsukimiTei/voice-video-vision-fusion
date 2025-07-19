@@ -1,105 +1,128 @@
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { Camera, ImageIcon, Wand2, Video, TestTube } from 'lucide-react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { VideoRecorder } from './VideoRecorder';
+import { ImageEditor } from './ImageEditor';
+import { JWTTester } from './JWTTester';
+import VideoCompiler from './VideoCompiler';
+import VideoTaskHistory from './VideoTaskHistory';
+import { VideoTask } from '@/hooks/useVideoTasks';
 
-interface HomePageProps {
-  onVideoRecord: () => void;
-  onImageEdit: () => void;
-  onVideoCompile: () => void;
-  onJWTTest: () => void;
-}
+type ViewType = 'home' | 'recorder' | 'image-editor' | 'jwt-tester' | 'video-compiler' | 'task-history';
 
-export const HomePage = ({ onVideoRecord, onImageEdit, onVideoCompile, onJWTTest }: HomePageProps) => {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="p-8 max-w-2xl w-full text-center space-y-8">
-        <div className="space-y-4">
-          <h1 className="text-3xl font-bold text-foreground">AI 创意工具</h1>
-          <p className="text-muted-foreground text-lg">
-            选择您想要使用的 AI 功能
-          </p>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* 视频录制生成 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20" onClick={onVideoRecord}>
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <Camera className="h-8 w-8 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">视频录制生成</h3>
-                <p className="text-muted-foreground text-sm">
-                  录制视频并说出指令，AI 将基于视频最后一帧和语音指令生成新图像
-                </p>
-              </div>
-              <Button size="lg" className="w-full">
-                开始录制
-              </Button>
-            </div>
-          </Card>
+const HomePage: React.FC = () => {
+  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const [selectedTask, setSelectedTask] = useState<VideoTask | null>(null);
 
-          {/* 图像编辑 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20" onClick={onImageEdit}>
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <Wand2 className="h-8 w-8 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">图像编辑</h3>
-                <p className="text-muted-foreground text-sm">
-                  上传图片并输入编辑指令，AI 将根据您的要求对图像进行智能编辑
-                </p>
-              </div>
-              <Button size="lg" className="w-full" variant="outline">
-                <ImageIcon className="mr-2 h-5 w-5" />
-                开始编辑
-              </Button>
-            </div>
-          </Card>
+  const handleBack = () => {
+    setCurrentView('home');
+    setSelectedTask(null);
+  };
 
-          {/* 编译现实 */}
-          <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20" onClick={onVideoCompile}>
-            <div className="space-y-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                <Video className="h-8 w-8 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold">编译现实</h3>
-                <p className="text-muted-foreground text-sm">
-                  拍摄视频，AI 将基于尾帧生成延续视频并与原视频合并
-                </p>
-              </div>
-              <Button size="lg" className="w-full" variant="secondary">
-                <Video className="mr-2 h-5 w-5" />
-                开始编译
-              </Button>
+  const handleSelectTask = (task: VideoTask) => {
+    setSelectedTask(task);
+    setCurrentView('video-compiler');
+  };
+
+  switch (currentView) {
+    case 'recorder':
+      return <VideoRecorder onBack={handleBack} />;
+    case 'image-editor':
+      return <ImageEditor onBack={handleBack} />;
+    case 'jwt-tester':
+      return <JWTTester />;
+    case 'video-compiler':
+      return <VideoCompiler onBack={handleBack} selectedTask={selectedTask} />;
+    case 'task-history':
+      return <VideoTaskHistory onBack={handleBack} onSelectTask={handleSelectTask} />;
+    default:
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-primary/5 p-4">
+          <div className="container mx-auto max-w-4xl space-y-8">
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight">AI 创意工具箱</h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                探索AI的无限可能，从图像编辑到视频生成，打造属于你的创意世界
+              </p>
             </div>
-          </Card>
-        </div>
-        
-        {/* JWT 测试器 */}
-        <Card className="p-4 border border-dashed border-muted-foreground/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TestTube className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <h4 className="font-medium text-sm">JWT 测试器</h4>
-                <p className="text-xs text-muted-foreground">生成和验证 Kling AI JWT Token</p>
-              </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl text-center">选择功能</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 主要功能 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={() => setCurrentView('video-compiler')}
+                    className="h-32 text-left"
+                    variant="outline"
+                  >
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold">视频编译器</h3>
+                      <p className="text-sm text-muted-foreground">录制视频并生成AI续集</p>
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setCurrentView('task-history')}
+                    className="h-32 text-left"
+                    variant="outline"
+                  >
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold">任务历史</h3>
+                      <p className="text-sm text-muted-foreground">查看过往视频生成记录</p>
+                    </div>
+                  </Button>
+                </div>
+                
+                {/* 其他工具 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    onClick={() => setCurrentView('recorder')}
+                    className="h-24 text-left"
+                    variant="outline"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">视频录制</h4>
+                      <p className="text-xs text-muted-foreground">录制并生成图像</p>
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setCurrentView('image-editor')}
+                    className="h-24 text-left"
+                    variant="outline"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">图像编辑</h4>
+                      <p className="text-xs text-muted-foreground">AI智能图像处理</p>
+                    </div>
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setCurrentView('jwt-tester')}
+                    className="h-24 text-left"
+                    variant="outline"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="font-semibold">JWT 测试</h4>
+                      <p className="text-xs text-muted-foreground">API认证测试</p>
+                    </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                由 Flux Kontext Pro 和 Kling AI 提供技术支持
+              </p>
             </div>
-            <Button size="sm" variant="outline" onClick={onJWTTest}>
-              测试
-            </Button>
           </div>
-        </Card>
-        
-        <div className="pt-4">
-          <p className="text-xs text-muted-foreground">
-            由 Flux Kontext Pro 提供 AI 图像生成技术支持
-          </p>
         </div>
-      </Card>
-    </div>
-  );
+      );
+  }
 };
+
+export default HomePage;

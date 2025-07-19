@@ -30,11 +30,15 @@ export const useVideoTasks = () => {
   // Set session context for RLS
   const setSessionContext = useCallback(async () => {
     const sessionId = getSessionId();
-    await supabase.rpc('set_config', {
-      setting_name: 'app.current_session_id',
-      setting_value: sessionId,
-      is_local: true
-    });
+    try {
+      await supabase.rpc('set_config', {
+        setting_name: 'app.current_session_id',
+        setting_value: sessionId,
+        is_local: true
+      });
+    } catch (error) {
+      console.error('Failed to set session context:', error);
+    }
   }, []);
 
   // Save task to database
@@ -57,8 +61,8 @@ export const useVideoTasks = () => {
       if (error) throw error;
       
       // Update local state
-      setTasks(prev => [data, ...prev]);
-      return data;
+      setTasks(prev => [data as VideoTask, ...prev]);
+      return data as VideoTask;
     } catch (err) {
       console.error('Error saving task:', err);
       setError(err instanceof Error ? err.message : 'Failed to save task');
@@ -82,10 +86,10 @@ export const useVideoTasks = () => {
 
       // Update local state
       setTasks(prev => prev.map(task => 
-        task.task_id === taskId ? { ...task, ...data } : task
+        task.task_id === taskId ? { ...task, ...data } as VideoTask : task
       ));
       
-      return data;
+      return data as VideoTask;
     } catch (err) {
       console.error('Error updating task:', err);
       setError(err instanceof Error ? err.message : 'Failed to update task');
@@ -107,7 +111,7 @@ export const useVideoTasks = () => {
 
       if (error) throw error;
       
-      setTasks(data || []);
+      setTasks((data || []) as VideoTask[]);
     } catch (err) {
       console.error('Error loading tasks:', err);
       setError(err instanceof Error ? err.message : 'Failed to load tasks');

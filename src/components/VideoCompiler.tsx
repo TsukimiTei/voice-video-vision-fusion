@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal, Video } from 'lucide-react';
+import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal, Video, RotateCcw } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useVideoCompiler } from '../hooks/useVideoCompiler';
+import { VideoTask } from '../hooks/useVideoTasks';
+import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { toast } from 'sonner';
 import { extractLastFrameFromVideo } from '../utils/videoFrameExtractor';
 
 interface VideoCompilerProps {
@@ -16,7 +17,8 @@ interface VideoCompilerProps {
 
 type ViewState = 'home' | 'recording' | 'processing' | 'result';
 
-export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
+const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
+  const { toast } = useToast();
   const [viewState, setViewState] = useState<ViewState>('home');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
@@ -162,7 +164,6 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
     }
   };
 
-
   const handleReset = () => {
     // Clear any running timeout
     if (timeoutRef.current) {
@@ -191,7 +192,10 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
     setViewState('home');
     resetTranscript();
     setConfirmedTranscript('');
-    toast.success('编译已取消');
+    toast({
+      title: "编译已取消",
+      description: "视频编译过程已取消",
+    });
   };
 
   const handleCancelRecording = () => {
@@ -206,16 +210,40 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
   };
 
   const handleDownloadResult = () => {
-    if (result?.videoUrl) {
+    const videoUrl = result?.videoUrl || selectedTask?.video_url;
+    if (videoUrl) {
       const a = document.createElement('a');
-      a.href = result.videoUrl;
+      a.href = videoUrl;
       a.download = `compiled-video-${Date.now()}.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      toast.success('视频下载开始');
+      toast({
+        title: "下载开始",
+        description: "视频下载已开始",
+      });
     }
   };
+
+  // Initialize from selected task if provided
+  useEffect(() => {
+    if (selectedTask) {
+      if (selectedTask.status === 'completed' && selectedTask.video_url) {
+        setViewState('result');
+        // Show the completed video result
+      } else if (selectedTask.status === 'processing') {
+        setViewState('processing');
+        // Resume monitoring the task
+      } else if (selectedTask.status === 'failed') {
+        setViewState('home');
+        toast({
+          title: "任务失败",
+          description: selectedTask.error_message || "视频生成失败",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [selectedTask, toast]);
 
   // Auto-trigger compilation when we have both video and transcript
   useEffect(() => {
@@ -301,7 +329,7 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
               </div>
             )}
             
-            {/* Voice Command Overlay - show confirmed and current transcript */}
+            {/* Voice Command Overlay */}
             {(confirmedTranscript || finalTranscript || transcript) && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
@@ -323,10 +351,10 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           </div>
         </div>
         
-        {/* Controls - 32px below camera */}
+        {/* Controls */}
         <div className="px-4" style={{ marginTop: '32px' }}>
           <div className="flex items-center justify-center max-w-sm mx-auto relative">
-            {/* Record Button - Center */}
+            {/* Record Button */}
             <div className="relative">
               <div 
                 className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none ${
@@ -342,7 +370,7 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
               </div>
             </div>
             
-            {/* Camera Switch Button - Absolute positioned to the right */}
+            {/* Camera Switch Button */}
             <Button 
               onClick={switchCamera} 
               variant="outline" 
@@ -369,7 +397,7 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           </div>
         )}
         
-        {/* Spacer to push content up */}
+        {/* Spacer */}
         <div className="flex-1" />
       </div>
     );
@@ -388,91 +416,74 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
             <div className="w-20" />
           </div>
           
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* 原始视频 */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">原始视频</h3>
-                <div className="bg-black rounded-lg overflow-hidden aspect-video">
-                  {recordedVideoUrl && (
-                    <video
-                      src={recordedVideoUrl}
-                      controls
-                      className="w-full h-full object-cover"
+          {/* Show video result */}
+          {(result || (selectedTask?.status === 'completed' && selectedTask.video_url)) && (
+            <div className="text-center space-y-4">
+              <div className="max-w-2xl mx-auto">
+                <video 
+                  controls 
+                  className="w-full rounded-lg shadow-lg"
+                  src={result?.videoUrl || selectedTask?.video_url}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  生成提示词: {result?.prompt || selectedTask?.prompt}
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={handleDownloadResult}>
+                    <Download className="w-4 h-4 mr-2" />
+                    下载视频
+                  </Button>
+                  <Button variant="outline" onClick={handleReset}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    生成新视频
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Processing indicator */}
+          {!result && isProcessing && (
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
+              <div className="space-y-2">
+                <p className="text-muted-foreground">
+                  {progress?.stage === 'video_generation' && '视频生成中...'}
+                  {progress?.stage === 'video_merging' && '视频拼接中...'}
+                  {progress?.stage === 'processing' && '处理中...'}
+                  {!progress?.stage && '准备中...'}
+                </p>
+                {progress?.progress && (
+                  <div className="w-full max-w-md mx-auto bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${progress.progress}%` }}
                     />
-                  )}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  <p><strong>语音指令：</strong> {confirmedTranscript || finalTranscript}</p>
-                </div>
-              </div>
-            </Card>
-            
-            {/* 处理状态或结果 */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">
-                  {result ? '编译完成' : '编译状态'}
-                </h3>
-                
-                {!result && isProcessing && (
-                  <div className="text-center space-y-4">
-                    <Loader2 className="h-12 w-12 animate-spin mx-auto text-muted-foreground" />
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground">
-                        {progress?.stage === 'video_generation' && '视频生成中...'}
-                        {progress?.stage === 'video_merging' && '视频拼接中...'}
-                        {progress?.stage === 'processing' && '处理中...'}
-                        {!progress?.stage && '准备中...'}
-                      </p>
-                      {progress?.progress && (
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${progress.progress}%` }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Cancel Processing Button */}
-                    <Button 
-                      variant="outline" 
-                      onClick={handleCancelProcessing}
-                      className="mt-4"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      取消编译
-                    </Button>
-                  </div>
-                )}
-                
-                {result && (
-                  <div className="space-y-4">
-                    <div className="bg-black rounded-lg overflow-hidden aspect-video">
-                      <video
-                        src={result.videoUrl}
-                        controls
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <Button onClick={handleDownloadResult} className="w-full">
-                      <Download className="mr-2 h-4 w-4" />
-                      下载合并视频
-                    </Button>
-                  </div>
-                )}
-                
-                {compilerError && (
-                  <div className="text-center text-destructive">
-                    <p>编译失败: {compilerError}</p>
                   </div>
                 )}
               </div>
-            </Card>
-          </div>
-          
-          {/* 处理日志 */}
+              
+              <Button 
+                variant="outline" 
+                onClick={handleCancelProcessing}
+                className="mt-4"
+              >
+                <X className="mr-2 h-4 w-4" />
+                取消编译
+              </Button>
+            </div>
+          )}
+
+          {/* Error display */}
+          {compilerError && (
+            <div className="text-center text-destructive p-4">
+              <p>编译失败: {compilerError}</p>
+            </div>
+          )}
+
+          {/* Processing logs */}
           {statusLog.length > 0 && (
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">处理日志</h3>
@@ -489,7 +500,7 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           )}
         </div>
         
-        {/* 无语音指令对话框 */}
+        {/* Dialogs */}
         <AlertDialog open={showNoSpeechDialog} onOpenChange={setShowNoSpeechDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -509,7 +520,6 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           </AlertDialogContent>
         </AlertDialog>
         
-        {/* 处理超时对话框 */}
         <AlertDialog open={showTimeoutDialog} onOpenChange={setShowTimeoutDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -529,7 +539,6 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           </AlertDialogContent>
         </AlertDialog>
         
-        {/* NSFW内容对话框 */}
         <AlertDialog open={showModerationDialog} onOpenChange={setShowModerationDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -554,3 +563,5 @@ export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
 
   return null;
 };
+
+export default VideoCompiler;
