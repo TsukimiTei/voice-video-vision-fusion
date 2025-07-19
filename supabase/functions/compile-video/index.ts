@@ -26,18 +26,6 @@ serve(async (req) => {
   try {
     console.log('Request received successfully');
     
-    // Test response first
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Function is reachable',
-        timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-    
     let body;
     try {
       const bodyText = await req.text();
