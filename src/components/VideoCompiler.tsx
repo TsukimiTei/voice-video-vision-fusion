@@ -11,11 +11,12 @@ import { extractLastFrameFromVideo } from '../utils/videoFrameExtractor';
 
 interface VideoCompilerProps {
   onBack: () => void;
+  selectedTask?: VideoTask | null;
 }
 
 type ViewState = 'home' | 'recording' | 'processing' | 'result';
 
-export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
+export const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);

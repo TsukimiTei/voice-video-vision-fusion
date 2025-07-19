@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { extractLastFrameFromVideo } from '../utils/videoFrameExtractor';
+import { useVideoTasks } from './useVideoTasks';
 
 export interface VideoCompilerResult {
   videoUrl: string;
@@ -20,6 +21,7 @@ export const useVideoCompiler = () => {
   const [statusLog, setStatusLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<CompilerProgress | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const { saveTask, updateTask } = useVideoTasks();
 
   const compileVideo = useCallback(async (videoBlob: Blob, prompt: string) => {
     setIsProcessing(true);
@@ -89,6 +91,9 @@ export const useVideoCompiler = () => {
       addLog("正在等待视频生成完成...");
       setProgress({ stage: 'video_generation', progress: 60 });
       
+      // Save task to database
+      await saveTask(currentTaskId, prompt, 'processing');
+      
       // Start polling for task status
       await pollTaskStatus(currentTaskId, addLog);
       
@@ -97,6 +102,14 @@ export const useVideoCompiler = () => {
       addLog(`❌ 错误: ${errorMessage}`);
       setError(errorMessage);
       setProgress(null);
+      
+      // Update task with error if we have a taskId
+      if (taskId) {
+        await updateTask(taskId, {
+          status: 'failed',
+          error_message: errorMessage
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -133,12 +146,23 @@ export const useVideoCompiler = () => {
             prompt: statusData.prompt || ''
           });
           addLog("🎉 视频准备就绪！");
+          
+          // Update task in database
+          await updateTask(taskId, {
+            status: 'completed',
+            video_url: statusData.videoUrl
+          });
+          
           return;
         } else if (statusData.status === 'processing') {
           addLog(`⏳ 任务进行中: ${statusData.message || '处理中...'}`);
           setProgress({ stage: 'video_generation', progress: 60 + (attempts * 30 / maxAttempts) });
         } else if (statusData.status === 'failed') {
           addLog(`❌ 任务失败: ${statusData.error}`);
+          await updateTask(taskId, {
+            status: 'failed',
+            error_message: statusData.error
+          });
           throw new Error(statusData.error || '视频生成失败');
         }
         

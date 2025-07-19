@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      video_tasks: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          prompt: string
+          status: string
+          task_id: string
+          updated_at: string
+          user_session_id: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          prompt: string
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_session_id: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          prompt?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_session_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
