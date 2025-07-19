@@ -73,8 +73,9 @@ export const useVideoCompiler = () => {
 
       if (compileError) {
         console.error('Supabase function error details:', compileError);
-        addLog(`❌ Supabase 函数调用失败: ${compileError.message || JSON.stringify(compileError)}`);
-        throw new Error(`Edge Function调用失败: ${compileError.message || 'Unknown error'}`);
+        const errorMsg = compileError.message || JSON.stringify(compileError);
+        addLog(`❌ Supabase 函数调用失败: ${errorMsg}`);
+        throw new Error(`Edge Function调用失败: ${errorMsg}`);
       }
 
       addLog(`📡 收到 Edge Function 响应`);
