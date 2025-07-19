@@ -128,23 +128,10 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         // Stop speech recognition first
         stopListening();
         
-        // Use a timeout to check finalTranscript after speech recognition has time to finalize
-        setTimeout(() => {
-          // Get the latest finalTranscript from speech recognition
-          console.log('Checking transcript after recording stop. finalTranscript:', finalTranscript);
-          
-          // Check if we have meaningful speech input
-          if (!finalTranscript || finalTranscript.trim().length < 3) {
-            console.log('No valid transcript found, showing dialog');
-            setShowNoSpeechDialog(true);
-            return;
-          }
-          
-          // Update confirmed transcript with the final result
-          setConfirmedTranscript(finalTranscript);
-          console.log('Valid transcript found, proceeding to processing');
-          setViewState('processing');
-        }, 1500); // Give 1.5 seconds for speech recognition to finalize
+        // Direct check and proceed - remove the problematic dialog check
+        // The actual compilation logic will handle the transcript validation
+        console.log('Recording stopped, proceeding to processing');
+        setViewState('processing');
       };
       
       mediaRecorderRef.current.start();
@@ -237,9 +224,16 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   useEffect(() => {
     const currentTranscript = confirmedTranscript || finalTranscript;
     
-    if (viewState === 'processing' && recordedBlob && currentTranscript && !isProcessing && !result) {
+    if (viewState === 'processing' && recordedBlob && !isProcessing && !result) {
+      // Check if we have meaningful speech input before compilation
+      if (!currentTranscript || currentTranscript.trim().length < 3) {
+        console.log('No valid transcript found in processing, showing dialog');
+        setShowNoSpeechDialog(true);
+        setViewState('home');
+        return;
+      }
+      
       console.log('Auto-triggering compilation with transcript:', currentTranscript);
-      // Call compileVideo directly to avoid infinite loop
       compileVideo(recordedBlob, currentTranscript);
     }
   }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result, compileVideo]);
