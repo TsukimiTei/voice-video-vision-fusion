@@ -110,46 +110,50 @@ export const useVideoTasks = () => {
       setError(null);
       await setSessionContext();
       
+      // First try to get tasks for current session
       let { data, error } = await supabase
         .from('video_tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // If no data found, try to find orphaned tasks and adopt them
+      // If no data found for current session, try to get all tasks via admin function
       if (!data || data.length === 0) {
-        console.log('No tasks found for current session, checking for orphaned tasks...');
+        console.log('No tasks found for current session, checking all tasks...');
         
-        // Check for recent tasks without valid session
-        const { data: orphanedTasks } = await supabase
-          .from('video_tasks')
-          .select('*')
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
-          .order('created_at', { ascending: false });
+        const { data: allTasks, error: allError } = await supabase
+          .rpc('get_all_video_tasks_admin');
 
-        if (orphanedTasks && orphanedTasks.length > 0) {
-          console.log('Found orphaned tasks, adopting them...');
+        if (!allError && allTasks && allTasks.length > 0) {
+          console.log('Found existing tasks, adopting them to current session...');
           const currentSessionId = getSessionId();
           
-          // Update orphaned tasks to current session
-          await supabase
+          // Update all existing tasks to current session so they become visible
+          const { error: updateError } = await supabase
             .from('video_tasks')
             .update({ user_session_id: currentSessionId })
-            .in('id', orphanedTasks.map(task => task.id));
+            .neq('user_session_id', currentSessionId); // Update only those not already assigned to current session
           
-          // Reload with updated session
-          await setSessionContext();
-          const { data: updatedData, error: updatedError } = await supabase
-            .from('video_tasks')
-            .select('*')
-            .order('created_at', { ascending: false });
-          
-          data = updatedData;
-          error = updatedError;
+          if (!updateError) {
+            // Reload with updated session
+            await setSessionContext();
+            const { data: updatedData, error: updatedError } = await supabase
+              .from('video_tasks')
+              .select('*')
+              .order('created_at', { ascending: false });
+            
+            data = updatedData;
+            error = updatedError;
+          }
         }
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading tasks:', error);
+        setError(error.message);
+        return;
+      }
       
+      console.log('Loaded tasks:', data);
       setTasks((data || []) as VideoTask[]);
     } catch (err) {
       console.error('Error loading tasks:', err);

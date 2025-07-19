@@ -55,6 +55,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_video_tasks_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          created_at: string
+          updated_at: string
+          prompt: string
+          status: string
+          video_url: string
+          error_message: string
+          task_id: string
+          user_session_id: string
+        }[]
+      }
       set_config: {
         Args: {
           setting_name: string
