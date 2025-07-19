@@ -125,20 +125,24 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
   return token;
 }
 
-// Use Deno's built-in base64url encoding for better compatibility
+// Base64url encoding following RFC 4648 Section 5
 function base64urlEncode(str: string): string {
-  // Convert string to Uint8Array for proper encoding
+  // Convert string to bytes using TextEncoder
   const encoder = new TextEncoder();
   const bytes = encoder.encode(str);
   
-  // Use Deno's btoa with proper byte conversion
-  const base64 = btoa(String.fromCharCode(...bytes));
+  // Create binary string from bytes
+  let binaryString = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binaryString += String.fromCharCode(bytes[i]);
+  }
   
-  // Convert to base64url format (RFC 4648 Section 5)
+  // Base64 encode and convert to base64url
+  const base64 = btoa(binaryString);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Create HMAC SHA256 signature with improved encoding
+// Create HMAC SHA256 signature following RFC standards
 async function createHmacSha256Signature(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   
@@ -152,10 +156,16 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
   );
   
   // Create signature
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  const signatureBytes = new Uint8Array(signatureBuffer);
   
-  // Convert signature to base64url using consistent method
-  const signatureBytes = new Uint8Array(signature);
-  const base64 = btoa(String.fromCharCode(...signatureBytes));
+  // Convert to binary string first
+  let binaryString = '';
+  for (let i = 0; i < signatureBytes.length; i++) {
+    binaryString += String.fromCharCode(signatureBytes[i]);
+  }
+  
+  // Base64 encode and convert to base64url
+  const base64 = btoa(binaryString);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
