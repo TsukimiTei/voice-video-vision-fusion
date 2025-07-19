@@ -13,8 +13,13 @@ interface CompileVideoRequest {
 }
 
 serve(async (req) => {
+  console.log('=== Compile Video Function Started ===');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -23,13 +28,17 @@ serve(async (req) => {
     
     let body;
     try {
-      body = await req.json();
+      const bodyText = await req.text();
+      console.log('Raw request body length:', bodyText.length);
+      console.log('Raw request body sample:', bodyText.substring(0, 200));
+      body = JSON.parse(bodyText);
     } catch (jsonError) {
       console.error('Failed to parse JSON:', jsonError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Invalid JSON in request body' 
+          error: 'Invalid JSON in request body',
+          details: jsonError.message
         }),
         { 
           status: 400, 
@@ -84,6 +93,8 @@ serve(async (req) => {
     // Call Kling AI API directly with image data
     const klingResponse = await callKlingAI(image_base64, prompt);
     
+    console.log('Kling AI response received:', { success: klingResponse.success });
+    
     if (!klingResponse.success) {
       console.error('Kling AI API failed:', klingResponse.error);
       return new Response(
@@ -109,16 +120,19 @@ serve(async (req) => {
         videoUrl: klingResponse.videoUrl 
       }),
       { 
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
 
   } catch (error) {
-    console.error('Error in compile-video function:', error);
+    console.error('Critical error in compile-video function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+        error: error instanceof Error ? error.message : 'Internal server error',
+        stack: error instanceof Error ? error.stack : undefined
       }),
       { 
         status: 500, 
