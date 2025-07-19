@@ -234,43 +234,49 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 }
 
-// Generate JWT token for Kling AI authentication - Fixed timing precision
+// Generate JWT token according to official Kling AI documentation
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
-  // Use exact timestamp without floor to avoid timing issues
+  // Get current timestamp in seconds (matching Python's int(time.time()))
   const currentTime = Math.floor(Date.now() / 1000);
   
+  // Header exactly as specified in official docs
   const header = {
-    alg: "HS256",
-    typ: "JWT"
+    "alg": "HS256",
+    "typ": "JWT"
   };
   
+  // Payload exactly as specified in official docs
   const payload = {
-    iss: accessKey,
-    exp: currentTime + 1800, // Valid for 30 minutes  
-    nbf: currentTime // Valid from now (no offset)
+    "iss": accessKey,
+    "exp": currentTime + 1800, // Current time + 30 minutes
+    "nbf": currentTime - 5     // Current time - 5 seconds
   };
   
-  console.log('JWT generation details:');
+  console.log('JWT generation (following official docs):');
   console.log('- Current timestamp:', currentTime);
   console.log('- Access key:', accessKey);
   console.log('- Secret key length:', secretKey ? secretKey.length : 0);
+  console.log('- Header:', JSON.stringify(header));
   console.log('- Payload:', JSON.stringify(payload));
   
-  // Use standard btoa for base64url encoding
+  // Encode header and payload using base64url
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
   
   console.log('- Encoded header:', encodedHeader);
   console.log('- Encoded payload:', encodedPayload);
   
-  // Create signature using HMAC SHA256
+  // Create the message to sign (header.payload)
   const message = `${encodedHeader}.${encodedPayload}`;
   console.log('- Message to sign:', message);
   
+  // Create signature using HMAC SHA256
   const signature = await createHmacSha256Signature(message, secretKey);
   console.log('- Signature:', signature.substring(0, 20) + '...');
   
+  // Construct final JWT token
   const token = `${message}.${signature}`;
+  console.log('- Final JWT token length:', token.length);
   console.log('- Final JWT token:', token);
   
   return token;
