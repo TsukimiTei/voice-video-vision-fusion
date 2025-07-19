@@ -32,7 +32,7 @@ export const useImageGeneration = () => {
       // Step 1: Submit generation request via Supabase Edge Function
       const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-image-edit', {
         body: {
-          image: imageBase64,
+          input_image: imageBase64,
           prompt
         }
       });
@@ -44,10 +44,10 @@ export const useImageGeneration = () => {
 
       addLog(`📡 收到 Edge Function 响应`);
       
-      if (submitData.success && submitData.data) {
+      if (submitData.success && submitData.imageUrl) {
         addLog("✅ 图像生成完成！");
         setResult({
-          imageUrl: submitData.data,
+          imageUrl: submitData.imageUrl,
           prompt
         });
         addLog("🎉 图像下载成功！");
