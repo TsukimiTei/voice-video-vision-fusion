@@ -216,6 +216,10 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
     nbf: now - 5 // Valid from 5 seconds ago
   };
   
+  console.log('JWT payload:', payload);
+  console.log('Access key:', accessKey);
+  console.log('Secret key prefix:', secretKey ? secretKey.substring(0, 8) + '...' : 'undefined');
+  
   // Base64URL encode header and payload
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
@@ -224,7 +228,10 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
   const message = `${encodedHeader}.${encodedPayload}`;
   const signature = await createHmacSha256Signature(message, secretKey);
   
-  return `${message}.${signature}`;
+  const token = `${message}.${signature}`;
+  console.log('Generated JWT token:', token);
+  
+  return token;
 }
 
 // Base64URL encode (without padding)
