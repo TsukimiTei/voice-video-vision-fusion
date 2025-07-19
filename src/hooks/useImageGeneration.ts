@@ -29,9 +29,10 @@ export const useImageGeneration = () => {
       
       addLog("开始提交图像生成请求...");
       
-      // Step 1: Submit generation request via Supabase Edge Function for text-to-image
-      const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-text-to-image', {
+      // Step 1: Submit generation request via Supabase Edge Function
+      const { data: submitData, error: submitError } = await supabase.functions.invoke('generate-image-edit', {
         body: {
+          image: imageBase64,
           prompt
         }
       });
