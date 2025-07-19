@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const KLING_API_BASE_URL = 'https://api-singapore.klingai.com'
+const KLING_API_BASE_URL = 'https://api.piapi.ai'
 
 interface CompileVideoRequest {
   prompt: string;
@@ -159,66 +159,62 @@ async function extractLastFrame(videoBase64: string): Promise<string> {
   }
 }
 
-// Call Kling AI API for image-to-video generation
-async function callKlingAI(frameBase64: string, prompt: string) {
-  const accessKey = Deno.env.get('KLING_ACCESS_KEY');
-  const secretKey = Deno.env.get('KLING_SECRET_KEY');
+// Call PiAPI Kling AI API for video generation
+async function callKlingAI(videoBase64: string, prompt: string) {
+  const apiKey = Deno.env.get('KLING_ACCESS_KEY'); // PiAPI uses one API key
   
-  if (!accessKey || !secretKey) {
-    console.error('Kling AI API keys not configured');
+  if (!apiKey) {
+    console.error('PiAPI Kling API key not configured');
     return {
       success: false,
-      error: 'Kling AI API keys not configured'
+      error: 'PiAPI Kling API key not configured'
     };
   }
 
   try {
-    console.log('Calling Kling AI API for image-to-video generation...');
+    console.log('Calling PiAPI Kling AI API for video generation...');
     
-    // Create authentication headers for Kling AI API
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const authHeaders = createKlingAuthHeaders(accessKey, secretKey, timestamp);
-    
-    // Prepare the request body for image-to-video generation using Kling 2.1
+    // Prepare the request body for PiAPI Kling API
     const requestBody = {
-      model: "kling-v-1-5", // Kling 2.1 model
-      task_type: "video_to_video", // Change to video_to_video since we're sending video data
+      model: "kling",
+      task_type: "video_generation",
       input: {
-        video_base64: frameBase64, // Send video data directly
         prompt: prompt,
-        duration: 5, // 5 seconds
+        negative_prompt: "",
+        cfg_scale: 0.5,
+        duration: 5,
         aspect_ratio: "16:9",
-        creativity: 0.7,
-        professional_mode: false
+        image_url: null, // null for text-to-video, or use for image-to-video
+        mode: "standard" // or "professional"
       }
     };
 
-    console.log('Sending request to Kling AI API...');
+    console.log('Sending request to PiAPI Kling AI API...');
     
-    const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/video2video`, {
+    const response = await fetch(`${KLING_API_BASE_URL}/api/v1/task`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...authHeaders
+        'x-api-key': apiKey
       },
       body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Kling AI API error:', response.status, errorText);
+      console.error('PiAPI Kling AI API error:', response.status, errorText);
       return {
         success: false,
-        error: `Kling AI API error: ${response.status} ${errorText}`
+        error: `PiAPI Kling AI API error: ${response.status} ${errorText}`
       };
     }
 
     const result = await response.json();
-    console.log('Kling AI API response:', result);
+    console.log('PiAPI Kling AI API response:', result);
     
     if (result.task_id) {
       // Poll for completion
-      const videoUrl = await pollKlingTaskStatus(result.task_id, authHeaders);
+      const videoUrl = await pollKlingTaskStatus(result.task_id, apiKey);
       return {
         success: true,
         videoUrl: videoUrl
@@ -226,33 +222,22 @@ async function callKlingAI(frameBase64: string, prompt: string) {
     } else {
       return {
         success: false,
-        error: 'No task ID returned from Kling AI API'
+        error: 'No task ID returned from PiAPI Kling AI API'
       };
     }
 
   } catch (error) {
-    console.error('Error calling Kling AI API:', error);
+    console.error('Error calling PiAPI Kling AI API:', error);
     return {
       success: false,
-      error: `Error calling Kling AI API: ${error.message}`
+      error: `Error calling PiAPI Kling AI API: ${error.message}`
     };
   }
 }
 
-// Create authentication headers for Kling AI API
-function createKlingAuthHeaders(accessKey: string, secretKey: string, timestamp: string) {
-  // Kling AI uses Access Key and Secret Key authentication
-  return {
-    'Authorization': `Bearer ${accessKey}`,
-    'X-API-Key': accessKey,
-    'X-Secret-Key': secretKey,
-    'X-Timestamp': timestamp,
-    'Content-Type': 'application/json'
-  };
-}
 
-// Poll Kling AI task status until completion
-async function pollKlingTaskStatus(taskId: string, authHeaders: any): Promise<string> {
+// Poll PiAPI task status until completion
+async function pollKlingTaskStatus(taskId: string, apiKey: string): Promise<string> {
   const maxAttempts = 30; // 5 minutes max
   let attempts = 0;
   
@@ -260,8 +245,10 @@ async function pollKlingTaskStatus(taskId: string, authHeaders: any): Promise<st
     try {
       console.log(`Polling task status, attempt ${attempts + 1}/${maxAttempts}`);
       
-      const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/tasks/${taskId}`, {
-        headers: authHeaders
+      const response = await fetch(`${KLING_API_BASE_URL}/api/v1/task/${taskId}`, {
+        headers: {
+          'x-api-key': apiKey
+        }
       });
       
       if (!response.ok) {
@@ -271,8 +258,8 @@ async function pollKlingTaskStatus(taskId: string, authHeaders: any): Promise<st
       const status = await response.json();
       console.log('Task status:', status);
       
-      if (status.status === 'completed' && status.result?.video_url) {
-        return status.result.video_url;
+      if (status.status === 'completed' && status.output?.video_url) {
+        return status.output.video_url;
       } else if (status.status === 'failed') {
         throw new Error(`Video generation failed: ${status.error || 'Unknown error'}`);
       }
