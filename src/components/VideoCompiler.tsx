@@ -41,6 +41,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   const { 
     isListening, 
     transcript, 
+    finalTranscript,
     resetTranscript, 
     startListening, 
     stopListening, 
@@ -115,7 +116,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         setRecordedVideoUrl(url);
         
         // Check if we have meaningful speech input
-        if (!transcript || transcript.trim().length < 3) {
+        if (!finalTranscript || finalTranscript.trim().length < 3) {
           setShowNoSpeechDialog(true);
           return;
         }
@@ -137,13 +138,13 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   };
 
   const handleCompileVideo = async () => {
-    if (!recordedBlob || !transcript) {
+    if (!recordedBlob || !finalTranscript) {
       toast.error('录制视频或语音指令缺失');
       return;
     }
 
     try {
-      await compileVideo(recordedBlob, transcript);
+      await compileVideo(recordedBlob, finalTranscript);
     } catch (error) {
       console.error('Video compilation failed:', error);
       if (error instanceof Error && error.message.includes('Request Moderated')) {
@@ -205,10 +206,10 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
 
   // Auto-trigger compilation when we have both video and transcript
   useEffect(() => {
-    if (viewState === 'processing' && recordedBlob && transcript && !isProcessing && !result) {
+    if (viewState === 'processing' && recordedBlob && finalTranscript && !isProcessing && !result) {
       handleCompileVideo();
     }
-  }, [viewState, recordedBlob, transcript, isProcessing, result]);
+  }, [viewState, recordedBlob, finalTranscript, isProcessing, result]);
 
   if (viewState === 'home') {
     return (
@@ -276,13 +277,22 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
               </div>
             )}
             
-            {/* Voice Command Overlay - only show when there's transcript */}
-            {transcript && (
+            {/* Voice Command Overlay - show confirmed and current transcript */}
+            {(finalTranscript || transcript) && (
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                  <p className="text-white text-sm leading-relaxed">
-                    {transcript}
-                  </p>
+                  <div className="space-y-2">
+                    {finalTranscript && (
+                      <p className="text-white text-sm leading-relaxed font-medium">
+                        确认: {finalTranscript}
+                      </p>
+                    )}
+                    {transcript && (
+                      <p className="text-white/70 text-xs leading-relaxed">
+                        正在说: {transcript}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -369,7 +379,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <p><strong>语音指令：</strong> {transcript}</p>
+                  <p><strong>语音指令：</strong> {finalTranscript}</p>
                 </div>
               </div>
             </Card>
