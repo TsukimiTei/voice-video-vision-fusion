@@ -35,8 +35,8 @@ serve(async (req) => {
     // Generate JWT token
     const jwtToken = await generateKlingJWT(accessKey, secretKey);
     
-    // Test the token with Kling AI API
-    const testResponse = await fetch('https://api.klingai.com/v1/videos/image2video?pageNum=1&pageSize=1', {
+    // Test the token with a simple API call
+    const testResponse = await fetch('https://api.klingai.com/v1/videos/text2video', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

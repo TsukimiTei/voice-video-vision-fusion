@@ -150,11 +150,20 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     console.log('JWT token generated successfully');
     
     // Prepare the request body for official Kling AI API
+    // Remove data: prefix if present
+    let cleanImageBase64 = imageBase64;
+    if (imageBase64.startsWith('data:')) {
+      const base64Index = imageBase64.indexOf(',');
+      if (base64Index !== -1) {
+        cleanImageBase64 = imageBase64.substring(base64Index + 1);
+      }
+    }
+    
     const requestBody = {
       model_name: "kling-v1", // Use kling-v1 model
       mode: "std", // Standard mode (5 seconds)
       duration: "5",
-      image: imageBase64, // Base64 encoded image data (no data: prefix)
+      image: cleanImageBase64, // Base64 encoded image data (no data: prefix)
       prompt: prompt,
       cfg_scale: 0.5
     };
