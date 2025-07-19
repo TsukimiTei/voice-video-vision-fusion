@@ -276,15 +276,33 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
   return token;
 }
 
-// Simple base64url encode using native btoa
+// RFC 7515 compliant base64url encode
 function base64urlEncode(str: string): string {
-  // Use native btoa which handles UTF-8 properly
-  const base64 = btoa(str);
-  // Convert to base64url format
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  
+  // Convert to base64 using Deno's standard library approach
+  let base64 = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  
+  for (let i = 0; i < data.length; i += 3) {
+    const a = data[i];
+    const b = data[i + 1] || 0;
+    const c = data[i + 2] || 0;
+    
+    const triple = (a << 16) | (b << 8) | c;
+    
+    base64 += chars[(triple >> 18) & 63];
+    base64 += chars[(triple >> 12) & 63];
+    base64 += i + 1 < data.length ? chars[(triple >> 6) & 63] : '=';
+    base64 += i + 2 < data.length ? chars[triple & 63] : '=';
+  }
+  
+  // Convert to base64url format (RFC 4648 Section 5)
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Create HMAC SHA256 signature
+// Create HMAC SHA256 signature according to RFC 7515
 async function createHmacSha256Signature(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   
@@ -300,9 +318,25 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
   // Create signature
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   
-  // Convert to base64url using native btoa
-  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
-  return base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  // Convert signature to base64url
+  const signatureArray = new Uint8Array(signature);
+  let base64 = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  
+  for (let i = 0; i < signatureArray.length; i += 3) {
+    const a = signatureArray[i];
+    const b = signatureArray[i + 1] || 0;
+    const c = signatureArray[i + 2] || 0;
+    
+    const triple = (a << 16) | (b << 8) | c;
+    
+    base64 += chars[(triple >> 18) & 63];
+    base64 += chars[(triple >> 12) & 63];
+    base64 += i + 1 < signatureArray.length ? chars[(triple >> 6) & 63] : '=';
+    base64 += i + 2 < signatureArray.length ? chars[triple & 63] : '=';
+  }
+  
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 // Poll official Kling AI task status until completion
