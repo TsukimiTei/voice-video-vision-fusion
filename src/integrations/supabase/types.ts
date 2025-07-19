@@ -63,6 +63,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_session_context: {
+        Args: { session_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

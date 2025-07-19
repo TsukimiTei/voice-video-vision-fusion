@@ -5,9 +5,10 @@ import { VideoRecorder } from './VideoRecorder';
 import { ImageEditor } from './ImageEditor';
 import VideoCompiler from './VideoCompiler';
 import VideoTaskHistory from './VideoTaskHistory';
+import VideoTaskResult from './VideoTaskResult';
 import { VideoTask } from '@/hooks/useVideoTasks';
 
-type ViewType = 'home' | 'recorder' | 'image-editor' | 'video-compiler' | 'task-history';
+type ViewType = 'home' | 'recorder' | 'image-editor' | 'video-compiler' | 'task-history' | 'task-result';
 
 const HomePage: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -20,7 +21,17 @@ const HomePage: React.FC = () => {
 
   const handleSelectTask = (task: VideoTask) => {
     setSelectedTask(task);
+    setCurrentView('task-result');
+  };
+
+  const handleBackToHistory = () => {
+    setCurrentView('task-history');
+    setSelectedTask(null);
+  };
+
+  const handleCreateNewVideo = () => {
     setCurrentView('video-compiler');
+    setSelectedTask(null);
   };
 
   switch (currentView) {
@@ -32,6 +43,16 @@ const HomePage: React.FC = () => {
       return <VideoCompiler onBack={handleBack} selectedTask={selectedTask} />;
     case 'task-history':
       return <VideoTaskHistory onBack={handleBack} onSelectTask={handleSelectTask} />;
+    case 'task-result':
+      return selectedTask ? (
+        <VideoTaskResult 
+          task={selectedTask} 
+          onBack={handleBackToHistory} 
+          onCreateNew={handleCreateNewVideo}
+        />
+      ) : (
+        <VideoTaskHistory onBack={handleBack} onSelectTask={handleSelectTask} />
+      );
     default:
       return (
         <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-primary/5 p-4">

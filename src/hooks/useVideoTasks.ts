@@ -31,10 +31,8 @@ export const useVideoTasks = () => {
   const setSessionContext = useCallback(async () => {
     const sessionId = getSessionId();
     try {
-      const { error } = await supabase.rpc('set_config', {
-        setting_name: 'app.current_session_id',
-        setting_value: sessionId,
-        is_local: true
+      const { error } = await supabase.rpc('set_session_context', {
+        session_id: sessionId
       });
       if (error) {
         console.error('Failed to set session context:', error);
