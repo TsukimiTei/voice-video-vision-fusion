@@ -133,9 +133,9 @@ async function callKlingAI(frameBase64: string, prompt: string) {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const authHeaders = createKlingAuthHeaders(accessKey, secretKey, timestamp);
     
-    // Prepare the request body for image-to-video generation
+    // Prepare the request body for image-to-video generation using Kling 2.1
     const requestBody = {
-      model: "kling-v1.6-pro",
+      model: "kling-v-1-5", // Kling 2.1 model
       task_type: "image_to_video", 
       input: {
         image_base64: frameBase64,

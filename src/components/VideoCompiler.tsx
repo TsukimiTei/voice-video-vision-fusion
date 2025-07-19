@@ -88,12 +88,16 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   }, [isProcessing]);
 
   const handleStartRecording = async () => {
-    setViewState('recording');
-    resetTranscript();
-    await startCamera();
-    await startListening();
+    if (viewState !== 'recording') {
+      setViewState('recording');
+      resetTranscript();
+      await startCamera();
+      await startListening();
+      return;
+    }
     
-    if (stream) {
+    // Start actual recording when in recording view
+    if (stream && !mediaRecorderRef.current) {
       recordedChunksRef.current = [];
       mediaRecorderRef.current = new MediaRecorder(stream);
       
@@ -108,6 +112,14 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         setRecordedBlob(blob);
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
+        
+        // Check if we have meaningful speech input
+        if (!transcript || transcript.trim().length < 3) {
+          setShowNoSpeechDialog(true);
+          return;
+        }
+        
+        setViewState('processing');
       };
       
       mediaRecorderRef.current.start();
@@ -117,17 +129,8 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   const handleStopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
     }
-    stopCamera();
-    stopListening();
-    
-    // Check if we have meaningful speech input
-    if (!transcript || transcript.trim().length < 3) {
-      setShowNoSpeechDialog(true);
-      return;
-    }
-    
-    setViewState('processing');
   };
 
   const handleCompileVideo = async () => {
@@ -240,76 +243,81 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
 
   if (viewState === 'recording') {
     return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={handleCancelRecording} className="flex items-center gap-2">
-              <X className="h-4 w-4" />
-              取消
-            </Button>
-            <h1 className="text-xl font-bold">录制中</h1>
-            <Button onClick={switchCamera} variant="outline" size="sm">
-              {facingMode === 'user' ? '后置' : '前置'}
-            </Button>
-          </div>
-          
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* 视频预览 */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">视频预览</h3>
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                  {isCameraRecording && (
-                    <div className="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 rounded-full text-sm flex items-center gap-1">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                      录制中
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 bg-background/95 backdrop-blur-sm border-b">
+          <Button variant="ghost" onClick={handleCancelRecording} className="flex items-center gap-2">
+            <X className="h-4 w-4" />
+            取消
+          </Button>
+          <h1 className="text-lg font-medium">编译现实</h1>
+          <Button onClick={switchCamera} variant="outline" size="sm">
+            {facingMode === 'user' ? '后置' : '前置'}
+          </Button>
+        </div>
+        
+        {/* Main Camera View - 1:1 Aspect Ratio */}
+        <div className="flex-1 flex flex-col items-center justify-center p-4 space-y-4">
+          <div className="relative w-full max-w-md aspect-square bg-black rounded-2xl overflow-hidden shadow-2xl">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
             
-            {/* 语音识别 */}
-            <Card className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">语音指令</h3>
-                <div className="min-h-32 p-4 bg-muted rounded-lg">
-                  {isListening && (
-                    <div className="flex items-center gap-2 text-primary mb-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                      听取中...
-                    </div>
-                  )}
-                  <p className="text-foreground">
-                    {transcript || '请说出您希望AI如何延续视频的指令...'}
-                  </p>
-                </div>
-                {speechError && (
-                  <p className="text-destructive text-sm">{speechError}</p>
-                )}
+            {/* Recording Indicator */}
+            {isCameraRecording && (
+              <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2 shadow-lg">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                录制中
               </div>
-            </Card>
+            )}
+            
+            {/* Voice Command Overlay */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                {isListening && (
+                  <div className="flex items-center gap-2 text-white mb-2">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    <span className="text-sm">正在听取指令...</span>
+                  </div>
+                )}
+                <p className="text-white text-sm leading-relaxed">
+                  {transcript || '请说出您希望AI如何延续视频的指令...'}
+                </p>
+              </div>
+            </div>
           </div>
           
-          <div className="text-center">
-            <Button size="lg" onClick={handleStopRecording} className="px-8">
-              <CheckCircle className="mr-2 h-5 w-5" />
-              完成录制
-            </Button>
-          </div>
-          
-          {cameraError && (
-            <div className="text-center">
-              <p className="text-destructive">{cameraError}</p>
+          {/* Error Display */}
+          {(cameraError || speechError) && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 max-w-md w-full">
+              <p className="text-destructive text-sm text-center">
+                {cameraError || speechError}
+              </p>
             </div>
           )}
+        </div>
+        
+        {/* Record Button */}
+        <div className="p-6 flex justify-center">
+          <div className="relative">
+            <div 
+              className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none"
+              onMouseDown={handleStartRecording}
+              onMouseUp={handleStopRecording}
+              onMouseLeave={handleStopRecording}
+              onTouchStart={handleStartRecording}
+              onTouchEnd={handleStopRecording}
+            >
+              <div className="w-6 h-6 bg-white rounded-sm" />
+            </div>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              按住录制
+            </p>
+          </div>
         </div>
       </div>
     );
