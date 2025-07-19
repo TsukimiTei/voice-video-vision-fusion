@@ -251,20 +251,18 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
             取消
           </Button>
           <h1 className="text-lg font-medium">编译现实</h1>
-          <Button onClick={switchCamera} variant="outline" size="sm">
-            {facingMode === 'user' ? '后置' : '前置'}
-          </Button>
+          <div className="w-16" />
         </div>
         
-        {/* Main Camera View - 1:1 Aspect Ratio */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 space-y-4">
-          <div className="relative w-full max-w-md aspect-square bg-black rounded-2xl overflow-hidden shadow-2xl">
+        {/* Camera View - 1:1 Aspect Ratio at Top */}
+        <div className="p-4">
+          <div className="relative w-full max-w-sm mx-auto aspect-square bg-black rounded-2xl overflow-hidden shadow-2xl">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
             />
             
             {/* Recording Indicator */}
@@ -275,50 +273,60 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
               </div>
             )}
             
-            {/* Voice Command Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                {isListening && (
-                  <div className="flex items-center gap-2 text-white mb-2">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                    <span className="text-sm">正在听取指令...</span>
-                  </div>
-                )}
-                <p className="text-white text-sm leading-relaxed">
-                  {transcript || '请说出您希望AI如何延续视频的指令...'}
-                </p>
+            {/* Voice Command Overlay - only show when there's transcript */}
+            {transcript && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                  <p className="text-white text-sm leading-relaxed">
+                    {transcript}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Controls - 32px below camera */}
+        <div className="px-4" style={{ marginTop: '32px' }}>
+          <div className="flex items-center justify-center gap-4 max-w-sm mx-auto">
+            {/* Record Button - Center */}
+            <div className="relative">
+              <div 
+                className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none"
+                onMouseDown={handleStartRecording}
+                onMouseUp={handleStopRecording}
+                onMouseLeave={handleStopRecording}
+                onTouchStart={handleStartRecording}
+                onTouchEnd={handleStopRecording}
+              >
+                <div className="w-6 h-6 bg-white rounded-sm" />
               </div>
             </div>
+            
+            {/* Camera Switch Button - Right of record button */}
+            <Button onClick={switchCamera} variant="outline" size="sm" className="ml-4">
+              {facingMode === 'user' ? '后置' : '前置'}
+            </Button>
           </div>
           
-          {/* Error Display */}
-          {(cameraError || speechError) && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 max-w-md w-full">
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            按住录制
+          </p>
+        </div>
+        
+        {/* Error Display */}
+        {(cameraError || speechError) && (
+          <div className="p-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 max-w-sm mx-auto">
               <p className="text-destructive text-sm text-center">
                 {cameraError || speechError}
               </p>
             </div>
-          )}
-        </div>
-        
-        {/* Record Button */}
-        <div className="p-6 flex justify-center">
-          <div className="relative">
-            <div 
-              className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer select-none"
-              onMouseDown={handleStartRecording}
-              onMouseUp={handleStopRecording}
-              onMouseLeave={handleStopRecording}
-              onTouchStart={handleStartRecording}
-              onTouchEnd={handleStopRecording}
-            >
-              <div className="w-6 h-6 bg-white rounded-sm" />
-            </div>
-            <p className="text-center text-sm text-muted-foreground mt-2">
-              按住录制
-            </p>
           </div>
-        </div>
+        )}
+        
+        {/* Spacer to push content up */}
+        <div className="flex-1" />
       </div>
     );
   }
