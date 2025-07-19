@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal, Video } from 'lucide-react';
@@ -115,13 +115,16 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         
-        // Check if we have meaningful speech input
-        if (!finalTranscript || finalTranscript.trim().length < 3) {
-          setShowNoSpeechDialog(true);
-          return;
-        }
-        
-        setViewState('processing');
+        // Use a timeout to check finalTranscript after speech recognition has time to finalize
+        setTimeout(() => {
+          // Check if we have meaningful speech input
+          if (!finalTranscript || finalTranscript.trim().length < 3) {
+            setShowNoSpeechDialog(true);
+            return;
+          }
+          
+          setViewState('processing');
+        }, 500); // Give 500ms for speech recognition to finalize
       };
       
       mediaRecorderRef.current.start();
@@ -137,13 +140,14 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     }
   };
 
-  const handleCompileVideo = async () => {
+  const handleCompileVideo = useCallback(async () => {
     if (!recordedBlob || !finalTranscript) {
       toast.error('录制视频或语音指令缺失');
       return;
     }
 
     try {
+      console.log('Starting video compilation with transcript:', finalTranscript);
       await compileVideo(recordedBlob, finalTranscript);
     } catch (error) {
       console.error('Video compilation failed:', error);
@@ -151,7 +155,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         setShowModerationDialog(true);
       }
     }
-  };
+  }, [recordedBlob, finalTranscript, compileVideo]);
 
   const handleReset = () => {
     // Clear any running timeout
@@ -207,9 +211,10 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
   // Auto-trigger compilation when we have both video and transcript
   useEffect(() => {
     if (viewState === 'processing' && recordedBlob && finalTranscript && !isProcessing && !result) {
+      console.log('Auto-triggering compilation with finalTranscript:', finalTranscript);
       handleCompileVideo();
     }
-  }, [viewState, recordedBlob, finalTranscript, isProcessing, result]);
+  }, [viewState, recordedBlob, finalTranscript, isProcessing, result, handleCompileVideo]);
 
   if (viewState === 'home') {
     return (
