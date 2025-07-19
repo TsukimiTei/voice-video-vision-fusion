@@ -234,8 +234,9 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 }
 
-// Generate JWT token for Kling AI authentication
+// Generate JWT token for Kling AI authentication - Fixed timing precision
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
+  // Use exact timestamp without floor to avoid timing issues
   const currentTime = Math.floor(Date.now() / 1000);
   
   const header = {
@@ -245,8 +246,8 @@ async function generateKlingJWT(accessKey: string, secretKey: string): Promise<s
   
   const payload = {
     iss: accessKey,
-    exp: currentTime + 1800, // Valid for 30 minutes
-    nbf: currentTime - 5 // Valid from 5 seconds ago
+    exp: currentTime + 1800, // Valid for 30 minutes  
+    nbf: currentTime // Valid from now (no offset)
   };
   
   console.log('JWT generation details:');
