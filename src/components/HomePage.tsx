@@ -3,12 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VideoRecorder } from './VideoRecorder';
 import { ImageEditor } from './ImageEditor';
-import { JWTTester } from './JWTTester';
 import VideoCompiler from './VideoCompiler';
 import VideoTaskHistory from './VideoTaskHistory';
 import { VideoTask } from '@/hooks/useVideoTasks';
 
-type ViewType = 'home' | 'recorder' | 'image-editor' | 'jwt-tester' | 'video-compiler' | 'task-history';
+type ViewType = 'home' | 'recorder' | 'image-editor' | 'video-compiler' | 'task-history';
 
 const HomePage: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('home');
@@ -29,8 +28,6 @@ const HomePage: React.FC = () => {
       return <VideoRecorder onBack={handleBack} />;
     case 'image-editor':
       return <ImageEditor onBack={handleBack} />;
-    case 'jwt-tester':
-      return <JWTTester />;
     case 'video-compiler':
       return <VideoCompiler onBack={handleBack} selectedTask={selectedTask} />;
     case 'task-history':
@@ -46,14 +43,14 @@ const HomePage: React.FC = () => {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('video-compiler')}>
                 <CardContent className="p-0 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-2xl">🎬</span>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold mb-2">视频编译器</h3>
+                    <h3 className="text-lg font-semibold mb-2">编译现实</h3>
                     <p className="text-sm text-muted-foreground">录制视频并生成AI续集</p>
                   </div>
                 </CardContent>
@@ -77,8 +74,8 @@ const HomePage: React.FC = () => {
                     <span className="text-2xl">📹</span>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold mb-2">视频录制</h3>
-                    <p className="text-sm text-muted-foreground">录制并生成图像</p>
+                    <h3 className="text-lg font-semibold mb-2">AI拍照</h3>
+                    <p className="text-sm text-muted-foreground">录制视频并生成图像</p>
                   </div>
                 </CardContent>
               </Card>
@@ -91,18 +88,6 @@ const HomePage: React.FC = () => {
                   <div>
                     <h3 className="text-lg font-semibold mb-2">图像编辑</h3>
                     <p className="text-sm text-muted-foreground">AI智能图像处理</p>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('jwt-tester')}>
-                <CardContent className="p-0 text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">🔑</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">JWT 测试</h3>
-                    <p className="text-sm text-muted-foreground">API认证测试</p>
                   </div>
                 </CardContent>
               </Card>

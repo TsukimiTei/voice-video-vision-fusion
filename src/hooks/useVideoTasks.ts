@@ -78,18 +78,16 @@ export const useVideoTasks = () => {
       const { data, error } = await supabase
         .from('video_tasks')
         .update(updates)
-        .eq('task_id', taskId)
-        .select()
-        .single();
+        .eq('task_id', taskId);
 
       if (error) throw error;
 
       // Update local state
       setTasks(prev => prev.map(task => 
-        task.task_id === taskId ? { ...task, ...data } as VideoTask : task
+        task.task_id === taskId ? { ...task, ...updates } as VideoTask : task
       ));
       
-      return data as VideoTask;
+      return { ...updates, task_id: taskId } as VideoTask;
     } catch (err) {
       console.error('Error updating task:', err);
       setError(err instanceof Error ? err.message : 'Failed to update task');
