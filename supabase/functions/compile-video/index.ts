@@ -51,24 +51,6 @@ serve(async (req) => {
       );
     }
 
-    // Check image size
-    const imageSizeMB = (image_base64.length * 3 / 4) / (1024 * 1024);
-    console.log(`Image size: ${imageSizeMB.toFixed(2)} MB`);
-    
-    if (imageSizeMB > 10) {
-      console.error('Image too large:', imageSizeMB, 'MB');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Image too large: ${imageSizeMB.toFixed(2)}MB. Maximum size is 10MB.` 
-        }),
-        { 
-          status: 413, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
     console.log('Processing image with Kling AI...');
     
     // Call Kling AI API
@@ -118,14 +100,16 @@ serve(async (req) => {
   }
 });
 
-// Call Kling AI API for image-to-video generation
+// Call official Kling AI API for image-to-video generation
 async function callKlingAI(imageBase64: string, prompt: string) {
   const accessKey = Deno.env.get('KLING_ACCESS_KEY');
   const secretKey = Deno.env.get('KLING_SECRET_KEY');
   
   console.log('Kling AI credentials check:', { 
     hasAccessKey: !!accessKey, 
-    hasSecretKey: !!secretKey 
+    hasSecretKey: !!secretKey,
+    accessKeyPrefix: accessKey ? accessKey.substring(0, 8) + '...' : 'undefined',
+    secretKeyLength: secretKey ? secretKey.length : 0
   });
   
   if (!accessKey || !secretKey) {
@@ -137,57 +121,76 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 
   try {
-    console.log('Generating JWT token for Kling AI...');
+    console.log('Generating JWT token for Kling AI according to official documentation...');
     
-    // Generate JWT token for authentication
+    // Generate JWT token following official Kling AI documentation
     const jwtToken = await generateKlingJWT(accessKey, secretKey);
     console.log('JWT token generated successfully');
     
-    // Clean image base64 (remove data: prefix if present)
-    let cleanImageBase64 = imageBase64;
+    // Convert base64 image to URL for Kling AI API
+    // Kling AI expects image URL, but we'll try with base64 first
+    // If base64 doesn't work, we might need to upload to a temporary storage
+    let imageData = imageBase64;
+    
+    // Remove data: prefix if present
     if (imageBase64.startsWith('data:')) {
       const base64Index = imageBase64.indexOf(',');
       if (base64Index !== -1) {
-        cleanImageBase64 = imageBase64.substring(base64Index + 1);
+        imageData = imageBase64.substring(base64Index + 1);
       }
     }
     
+    // Prepare request body according to official API documentation
     const requestBody = {
       model_name: "kling-v1",
-      mode: "std",
-      duration: "5",
-      image: cleanImageBase64,
+      mode: "pro", // Using pro mode for better quality
+      duration: "5", // 5 seconds
+      image: imageData, // Try with base64 first
       prompt: prompt,
       cfg_scale: 0.5
     };
 
-    console.log('Sending request to Kling AI API...');
-    console.log('Request body prepared with prompt:', prompt.substring(0, 50) + '...');
+    console.log('Sending request to official Kling AI API...');
+    console.log('Request details:', {
+      url: `${KLING_API_BASE_URL}/v1/videos/image2video`,
+      model: requestBody.model_name,
+      mode: requestBody.mode,
+      prompt: prompt.substring(0, 100) + '...',
+      imageDataLength: imageData.length
+    });
     
     const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwtToken}`
+        'Authorization': `Bearer ${jwtToken}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
     });
 
     console.log('Kling API response status:', response.status);
+    console.log('Kling API response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Kling AI API error:', response.status, errorText);
+      console.error('Kling AI API error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText
+      });
       return {
         success: false,
-        error: `Kling AI API error: ${response.status} ${errorText}`
+        error: `Kling AI API error: ${response.status} ${response.statusText} - ${errorText}`
       };
     }
 
     const result = await response.json();
-    console.log('Kling AI API response:', result);
+    console.log('Kling AI API successful response:', result);
     
+    // According to the official docs, successful response should have code: 0
     if (result.code === 0 && result.data?.task_id) {
+      console.log('Task submitted successfully, task_id:', result.data.task_id);
+      
       // Poll for completion
       const videoUrl = await pollKlingTaskStatus(result.data.task_id, accessKey, secretKey);
       return {
@@ -195,9 +198,10 @@ async function callKlingAI(imageBase64: string, prompt: string) {
         videoUrl: videoUrl
       };
     } else {
+      console.error('Unexpected API response format:', result);
       return {
         success: false,
-        error: result.message || 'No task ID returned from Kling AI API'
+        error: result.message || result.error || 'Unexpected response format from Kling AI API'
       };
     }
 
@@ -210,58 +214,79 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   }
 }
 
-// Generate JWT token for Kling AI authentication
+// Generate JWT token according to official Kling AI documentation (RFC 7519)
 async function generateKlingJWT(accessKey: string, secretKey: string): Promise<string> {
+  // Get current timestamp in seconds (matching Python's int(time.time()))
   const currentTime = Math.floor(Date.now() / 1000);
   
+  // Header exactly as specified in official docs
   const header = {
     "alg": "HS256",
     "typ": "JWT"
   };
   
+  // Payload exactly as specified in official docs
   const payload = {
-    "iss": accessKey,
-    "exp": currentTime + 1800, // 30 minutes
-    "nbf": currentTime - 5     // 5 seconds ago
+    "iss": accessKey,  // Issuer: access key
+    "exp": currentTime + 1800, // Expiration: current time + 30 minutes (1800s)
+    "nbf": currentTime - 5     // Not before: current time - 5 seconds
   };
   
-  console.log('JWT generation:', {
-    currentTime,
-    accessKey: accessKey.substring(0, 8) + '...',
+  console.log('JWT generation details:', {
+    currentTime: currentTime,
+    exp: payload.exp,
+    nbf: payload.nbf,
+    iss: accessKey.substring(0, 8) + '...',
     secretKeyLength: secretKey.length
   });
   
-  // Base64url encode header and payload
+  // Encode header and payload using base64url (RFC 7515)
   const encodedHeader = base64urlEncode(JSON.stringify(header));
   const encodedPayload = base64urlEncode(JSON.stringify(payload));
   
-  // Create message to sign
+  // Create the message to sign (header.payload)
   const message = `${encodedHeader}.${encodedPayload}`;
   
-  // Create signature
+  // Create signature using HMAC SHA256
   const signature = await createHmacSha256Signature(message, secretKey);
   
-  return `${message}.${signature}`;
+  // Construct final JWT token
+  const token = `${message}.${signature}`;
+  
+  console.log('JWT token generated:', {
+    headerLength: encodedHeader.length,
+    payloadLength: encodedPayload.length,
+    signatureLength: signature.length,
+    totalLength: token.length
+  });
+  
+  return token;
 }
 
-// Base64url encoding
+// Base64url encoding following RFC 4648 Section 5
 function base64urlEncode(str: string): string {
+  // Convert string to UTF-8 bytes
   const encoder = new TextEncoder();
   const bytes = encoder.encode(str);
   
+  // Convert bytes to binary string
   let binaryString = '';
   for (let i = 0; i < bytes.length; i++) {
     binaryString += String.fromCharCode(bytes[i]);
   }
   
+  // Base64 encode using built-in btoa
   const base64 = btoa(binaryString);
+  
+  // Convert to base64url: replace + with -, / with _, and remove =
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Create HMAC SHA256 signature
+// Create HMAC SHA256 signature following RFC standards
 async function createHmacSha256Signature(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   
+  // Import the secret key for HMAC
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secret),
@@ -270,53 +295,78 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
     ['sign']
   );
   
+  // Create signature
   const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
   const signatureBytes = new Uint8Array(signatureBuffer);
   
+  // Convert signature bytes to binary string
   let binaryString = '';
   for (let i = 0; i < signatureBytes.length; i++) {
     binaryString += String.fromCharCode(signatureBytes[i]);
   }
   
+  // Base64 encode and convert to base64url
   const base64 = btoa(binaryString);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Poll Kling AI task status until completion
+// Poll official Kling AI task status until completion
 async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey: string): Promise<string> {
-  const maxAttempts = 30;
+  const maxAttempts = 60; // 10 minutes max (10 seconds * 60)
   let attempts = 0;
+  
+  console.log(`Starting to poll task status for task_id: ${taskId}`);
   
   while (attempts < maxAttempts) {
     try {
       console.log(`Polling task status, attempt ${attempts + 1}/${maxAttempts}`);
       
+      // Generate fresh JWT token for each request
       const jwtToken = await generateKlingJWT(accessKey, secretKey);
       
       const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video/${taskId}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
+          'Authorization': `Bearer ${jwtToken}`,
+          'Content-Type': 'application/json'
         }
       });
       
       if (!response.ok) {
-        throw new Error(`Status check failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Status check request failed:', response.status, errorText);
+        throw new Error(`Status check failed: ${response.status} ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('Task status:', result);
+      console.log('Task status response:', result);
       
       if (result.code === 0 && result.data) {
         const taskStatus = result.data.task_status;
+        const taskStatusMsg = result.data.task_status_msg;
         
-        if (taskStatus === 'succeed' && result.data.task_result?.videos?.[0]?.url) {
-          return result.data.task_result.videos[0].url;
+        console.log(`Task status: ${taskStatus}, message: ${taskStatusMsg}`);
+        
+        if (taskStatus === 'succeed') {
+          // Check if we have the video URL
+          const videoUrl = result.data.task_result?.videos?.[0]?.url;
+          if (videoUrl) {
+            console.log('Video generation completed successfully, URL:', videoUrl);
+            return videoUrl;
+          } else {
+            console.error('Video generation succeeded but no URL found in response:', result.data);
+            throw new Error('Video generation succeeded but no video URL returned');
+          }
         } else if (taskStatus === 'failed') {
-          throw new Error(`Video generation failed: ${result.data.task_status_msg || 'Unknown error'}`);
+          console.error('Video generation failed:', taskStatusMsg);
+          throw new Error(`Video generation failed: ${taskStatusMsg || 'Unknown error'}`);
+        } else {
+          // Status is 'submitted' or 'processing', continue polling
+          console.log(`Task still in progress (${taskStatus}), waiting...`);
         }
       } else {
-        console.error('Unexpected response format:', result);
+        console.error('Unexpected polling response format:', result);
+        throw new Error(`Unexpected response format: code=${result.code}`);
       }
       
       // Wait 10 seconds before next poll
@@ -324,10 +374,10 @@ async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey:
       attempts++;
       
     } catch (error) {
-      console.error('Error polling task status:', error);
+      console.error('Error during task status polling:', error);
       throw error;
     }
   }
   
-  throw new Error('Video generation timed out');
+  throw new Error(`Video generation timed out after ${maxAttempts * 10} seconds`);
 }
