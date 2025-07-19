@@ -125,21 +125,26 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         
-        // Use a timeout to check confirmedTranscript after speech recognition has time to finalize
+        // Stop speech recognition first
+        stopListening();
+        
+        // Use a timeout to check finalTranscript after speech recognition has time to finalize
         setTimeout(() => {
-          const currentTranscript = confirmedTranscript || finalTranscript;
-          console.log('Checking transcript after recording stop:', currentTranscript);
+          // Get the latest finalTranscript from speech recognition
+          console.log('Checking transcript after recording stop. finalTranscript:', finalTranscript);
           
           // Check if we have meaningful speech input
-          if (!currentTranscript || currentTranscript.trim().length < 3) {
+          if (!finalTranscript || finalTranscript.trim().length < 3) {
             console.log('No valid transcript found, showing dialog');
             setShowNoSpeechDialog(true);
             return;
           }
           
+          // Update confirmed transcript with the final result
+          setConfirmedTranscript(finalTranscript);
           console.log('Valid transcript found, proceeding to processing');
           setViewState('processing');
-        }, 1000); // Give 1 second for speech recognition to finalize
+        }, 1500); // Give 1.5 seconds for speech recognition to finalize
       };
       
       mediaRecorderRef.current.start();
@@ -234,9 +239,10 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     
     if (viewState === 'processing' && recordedBlob && currentTranscript && !isProcessing && !result) {
       console.log('Auto-triggering compilation with transcript:', currentTranscript);
-      handleCompileVideo();
+      // Call compileVideo directly to avoid infinite loop
+      compileVideo(recordedBlob, currentTranscript);
     }
-  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result]);
+  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result, compileVideo]);
 
   if (viewState === 'home') {
     return (
