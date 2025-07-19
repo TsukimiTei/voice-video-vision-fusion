@@ -49,8 +49,10 @@ export const useVideoTasks = () => {
   // Save task to database
   const saveTask = useCallback(async (taskId: string, prompt: string, status: 'processing' | 'completed' | 'failed' = 'processing') => {
     try {
-      await setSessionContext();
       const sessionId = getSessionId();
+      await setSessionContext();
+      
+      console.log('Saving task with session ID:', sessionId);
       
       const { data, error } = await supabase
         .from('video_tasks')
@@ -63,7 +65,10 @@ export const useVideoTasks = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       // Update local state
       setTasks(prev => [data as VideoTask, ...prev]);
@@ -107,10 +112,43 @@ export const useVideoTasks = () => {
       setError(null);
       await setSessionContext();
       
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('video_tasks')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // If no data found, try to find orphaned tasks and adopt them
+      if (!data || data.length === 0) {
+        console.log('No tasks found for current session, checking for orphaned tasks...');
+        
+        // Check for recent tasks without valid session
+        const { data: orphanedTasks } = await supabase
+          .from('video_tasks')
+          .select('*')
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+          .order('created_at', { ascending: false });
+
+        if (orphanedTasks && orphanedTasks.length > 0) {
+          console.log('Found orphaned tasks, adopting them...');
+          const currentSessionId = getSessionId();
+          
+          // Update orphaned tasks to current session
+          await supabase
+            .from('video_tasks')
+            .update({ user_session_id: currentSessionId })
+            .in('id', orphanedTasks.map(task => task.id));
+          
+          // Reload with updated session
+          await setSessionContext();
+          const { data: updatedData, error: updatedError } = await supabase
+            .from('video_tasks')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          data = updatedData;
+          error = updatedError;
+        }
+      }
 
       if (error) throw error;
       
