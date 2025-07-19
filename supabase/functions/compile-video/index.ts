@@ -195,12 +195,13 @@ async function callKlingAI(frameBase64: string, prompt: string) {
 
 // Create authentication headers for Kling AI API
 function createKlingAuthHeaders(accessKey: string, secretKey: string, timestamp: string) {
-  // Basic authentication headers - adjust based on actual Kling AI requirements
+  // Kling AI uses Access Key and Secret Key authentication
   return {
     'Authorization': `Bearer ${accessKey}`,
     'X-API-Key': accessKey,
     'X-Secret-Key': secretKey,
-    'X-Timestamp': timestamp
+    'X-Timestamp': timestamp,
+    'Content-Type': 'application/json'
   };
 }
 
