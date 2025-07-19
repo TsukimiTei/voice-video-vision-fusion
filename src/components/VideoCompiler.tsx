@@ -248,7 +248,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
       console.log('Auto-triggering compilation with transcript:', currentTranscript);
       compileVideo(recordedBlob, currentTranscript);
     }
-  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result, compileVideo]);
+  }, [viewState, recordedBlob, confirmedTranscript, finalTranscript, isProcessing, result]);
 
   if (viewState === 'home') {
     return (
