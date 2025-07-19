@@ -77,7 +77,7 @@ const HomePage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('task-history')}>
+              {/* <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('task-history')}>
                 <CardContent className="p-0 text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-2xl">📋</span>
@@ -87,7 +87,7 @@ const HomePage: React.FC = () => {
                     <p className="text-sm text-muted-foreground">查看过往视频生成记录</p>
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
               
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setCurrentView('recorder')}>
                 <CardContent className="p-0 text-center space-y-4">
