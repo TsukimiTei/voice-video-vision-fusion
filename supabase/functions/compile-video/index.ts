@@ -19,14 +19,34 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, video_base64 }: CompileVideoRequest = await req.json();
+    console.log('Starting compile video request...');
     
-    console.log('Compile video request received:', { 
-      prompt: prompt?.substring(0, 100) + '...', 
-      videoSize: video_base64?.length || 0 
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      console.error('Failed to parse JSON:', jsonError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid JSON in request body' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    const { prompt, video_base64 }: CompileVideoRequest = body;
+    
+    console.log('Request parsed successfully:', { 
+      prompt: prompt ? prompt.substring(0, 100) + '...' : 'undefined', 
+      videoSize: video_base64 ? video_base64.length : 0 
     });
 
     if (!prompt || !video_base64) {
+      console.error('Missing required fields:', { hasPrompt: !!prompt, hasVideo: !!video_base64 });
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -39,17 +59,31 @@ serve(async (req) => {
       );
     }
 
-    // Extract last frame from video (simplified - using first frame as mock)
-    console.log('Extracting last frame from video...');
+    // Check video size (base64 should be reasonable size)
+    const videoSizeMB = (video_base64.length * 3 / 4) / (1024 * 1024); // Convert base64 to actual size
+    console.log(`Video size: ${videoSizeMB.toFixed(2)} MB`);
     
-    // In a real implementation, you would use FFmpeg to extract the actual last frame
-    // For now, we'll use the video data to represent the frame
-    const lastFrameData = await extractLastFrame(video_base64);
+    if (videoSizeMB > 50) {
+      console.error('Video too large:', videoSizeMB, 'MB');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Video too large: ${videoSizeMB.toFixed(2)}MB. Maximum size is 50MB.` 
+        }),
+        { 
+          status: 413, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('Processing video with Kling AI...');
     
-    console.log('Last frame extracted, calling Kling AI API...');
+    // Extract/prepare video data for Kling AI
+    const videoData = await extractLastFrame(video_base64);
     
-    // Call Kling AI API for image-to-video generation
-    const klingResponse = await callKlingAI(lastFrameData, prompt);
+    // Call Kling AI API for video-to-video generation
+    const klingResponse = await callKlingAI(videoData, prompt);
     
     if (!klingResponse.success) {
       console.error('Kling AI API failed:', klingResponse.error);

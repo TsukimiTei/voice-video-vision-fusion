@@ -159,24 +159,6 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
     }
   };
 
-  const handleCompileVideo = useCallback(async () => {
-    const currentTranscript = confirmedTranscript || finalTranscript;
-    
-    if (!recordedBlob || !currentTranscript) {
-      toast.error('录制视频或语音指令缺失');
-      return;
-    }
-
-    try {
-      console.log('Starting video compilation with transcript:', currentTranscript);
-      await compileVideo(recordedBlob, currentTranscript);
-    } catch (error) {
-      console.error('Video compilation failed:', error);
-      if (error instanceof Error && error.message.includes('Request Moderated')) {
-        setShowModerationDialog(true);
-      }
-    }
-  }, [recordedBlob, confirmedTranscript, finalTranscript, compileVideo]);
 
   const handleReset = () => {
     // Clear any running timeout

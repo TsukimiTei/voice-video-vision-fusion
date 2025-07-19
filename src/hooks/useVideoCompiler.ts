@@ -35,9 +35,36 @@ export const useVideoCompiler = () => {
       addLog("开始处理视频编译...");
       setProgress({ stage: 'processing', progress: 10 });
       
-      // Convert video blob to base64
+      // Check video size first
+      const videoSizeMB = videoBlob.size / (1024 * 1024);
+      addLog(`视频大小: ${videoSizeMB.toFixed(2)} MB`);
+      
+      if (videoSizeMB > 50) {
+        addLog(`❌ 视频过大: ${videoSizeMB.toFixed(2)}MB，最大支持50MB`);
+        throw new Error(`视频过大: ${videoSizeMB.toFixed(2)}MB，最大支持50MB`);
+      }
+      
+      // Convert video blob to base64 in chunks to prevent memory issues
+      addLog("开始转换视频格式...");
       const arrayBuffer = await videoBlob.arrayBuffer();
-      const videoBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      // Check if array buffer is too large
+      if (arrayBuffer.byteLength > 50 * 1024 * 1024) {
+        addLog("❌ 视频数据过大，无法处理");
+        throw new Error("视频数据过大，无法处理");
+      }
+      
+      // Convert to base64 safely without spreading large arrays
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binaryString = '';
+      const chunkSize = 8192; // Process in chunks to avoid call stack issues
+      
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.slice(i, i + chunkSize);
+        binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      
+      const videoBase64 = btoa(binaryString);
       
       addLog("视频转换完成，准备上传...");
       setProgress({ stage: 'processing', progress: 30 });
