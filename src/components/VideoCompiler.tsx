@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal } from 'lucide-react';
+import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal, Video } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useVideoCompiler } from '../hooks/useVideoCompiler';
@@ -304,7 +304,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
                 onTouchStart={handleStartRecording}
                 onTouchEnd={handleStopRecording}
               >
-                <div className="w-6 h-6 bg-white rounded-sm" />
+                <Video className="h-8 w-8 text-white" />
               </div>
             </div>
             
