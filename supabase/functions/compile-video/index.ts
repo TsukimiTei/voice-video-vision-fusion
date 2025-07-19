@@ -131,6 +131,9 @@ async function callKlingAI(imageBase64: string, prompt: string) {
   const accessKey = Deno.env.get('KLING_ACCESS_KEY');
   const secretKey = Deno.env.get('KLING_SECRET_KEY');
   
+  console.log('Access Key found:', !!accessKey);
+  console.log('Secret Key found:', !!secretKey);
+  
   if (!accessKey || !secretKey) {
     console.error('Kling AI API keys not configured');
     return {
@@ -144,6 +147,7 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     
     // Generate JWT token for authentication
     const jwtToken = await generateKlingJWT(accessKey, secretKey);
+    console.log('JWT token generated successfully');
     
     // Prepare the request body for official Kling AI API
     const requestBody = {
@@ -156,6 +160,7 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     };
 
     console.log('Sending request to official Kling AI API...');
+    console.log('Request body prepared with prompt:', prompt.substring(0, 50) + '...');
     
     const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video`, {
       method: 'POST',
@@ -165,6 +170,9 @@ async function callKlingAI(imageBase64: string, prompt: string) {
       },
       body: JSON.stringify(requestBody)
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
