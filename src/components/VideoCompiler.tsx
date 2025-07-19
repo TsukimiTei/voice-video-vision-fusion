@@ -22,7 +22,6 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
-  const [lastFrameImage, setLastFrameImage] = useState<string | null>(null);
   const [showNoSpeechDialog, setShowNoSpeechDialog] = useState(false);
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [showModerationDialog, setShowModerationDialog] = useState(false);
@@ -60,7 +59,9 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
     result,
     error: compilerError,
     statusLog,
-    progress
+    progress,
+    reset: resetCompiler,
+    lastFrameImage: compilerLastFrameImage
   } = useVideoCompiler();
 
   // Update confirmed transcript when finalTranscript changes
@@ -145,15 +146,8 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
         // Stop speech recognition first
         stopListening();
         
-        // Extract last frame from video for Kling AI API
-        console.log('Extracting last frame from recorded video...');
-        try {
-          const lastFrame = await extractLastFrameFromVideo(blob);
-          setLastFrameImage(`data:image/jpeg;base64,${lastFrame}`);
-          console.log('Last frame extracted successfully');
-        } catch (error) {
-          console.error('Failed to extract last frame:', error);
-        }
+        // Last frame extraction will be handled by the compiler hook
+        console.log('Recording stopped, proceeding to processing');
         
         console.log('Recording stopped, proceeding to processing');
         setViewState('processing');
@@ -181,8 +175,8 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
     
     setViewState('home');
     setRecordedBlob(null);
-    setLastFrameImage(null);
     setConfirmedTranscript('');
+    resetCompiler();
     if (recordedVideoUrl) {
       URL.revokeObjectURL(recordedVideoUrl);
       setRecordedVideoUrl(null);
@@ -461,35 +455,83 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
                 {recordedVideoUrl && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-center">原始录制视频</h3>
-                    <video 
-                      controls 
-                      className="w-full rounded-lg shadow-sm aspect-video object-cover"
-                      src={recordedVideoUrl}
-                    />
+                    <div className="relative">
+                      <video 
+                        controls 
+                        className="w-full rounded-lg shadow-sm aspect-video object-cover"
+                        src={recordedVideoUrl}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = recordedVideoUrl;
+                          link.download = 'original-video.webm';
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 )}
 
                 {/* Last frame image */}
-                {lastFrameImage && (
+                {compilerLastFrameImage && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-center">最后一帧画面</h3>
-                    <img 
-                      src={lastFrameImage}
-                      alt="Last frame" 
-                      className="w-full rounded-lg shadow-sm aspect-video object-cover"
-                    />
+                    <div className="relative">
+                      <img 
+                        src={compilerLastFrameImage}
+                        alt="Last frame" 
+                        className="w-full rounded-lg shadow-sm aspect-video object-cover"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = compilerLastFrameImage;
+                          link.download = 'last-frame.png';
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 )}
 
-                {/* Generated video (would need API to return this separately) */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-center">AI生成视频</h3>
-                  <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
-                    <p className="text-xs text-muted-foreground text-center px-2">
-                      生成的视频已合并到最终结果中
-                    </p>
+                {/* Generated video */}
+                {result?.generatedVideoUrl && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-center">AI生成视频</h3>
+                    <div className="relative">
+                      <video 
+                        controls 
+                        className="w-full rounded-lg shadow-sm aspect-video object-cover"
+                        src={result.generatedVideoUrl}
+                        preload="metadata"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = result.generatedVideoUrl!;
+                          link.download = 'generated-video.mp4';
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}

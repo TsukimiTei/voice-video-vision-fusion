@@ -6,6 +6,9 @@ import { useVideoTasks } from './useVideoTasks';
 export interface VideoCompilerResult {
   videoUrl: string;
   prompt: string;
+  generatedVideoUrl?: string;
+  originalVideoUrl?: string;
+  lastFrameImageUrl?: string;
 }
 
 export interface CompilerProgress {
@@ -22,6 +25,8 @@ export const useVideoCompiler = () => {
   const [progress, setProgress] = useState<CompilerProgress | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [originalVideoBlob, setOriginalVideoBlob] = useState<Blob | null>(null);
+  const [generatedVideoBlob, setGeneratedVideoBlob] = useState<Blob | null>(null);
+  const [lastFrameImage, setLastFrameImage] = useState<string | null>(null);
   const { saveTask, updateTask } = useVideoTasks();
 
   const mergeVideos = useCallback(async (originalVideoBlob: Blob, generatedVideoUrl: string, addLog: (message: string) => void): Promise<string> => {
@@ -65,20 +70,25 @@ export const useVideoCompiler = () => {
       
       addLog(`原始视频时长: ${originalDuration.toFixed(1)}秒, 生成视频时长: ${generatedDuration.toFixed(1)}秒`);
       
-      // Use browser's video merging with Canvas API
+      // Create a simple concatenated video (original + generated)
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d');
       
-      // Set canvas size based on original video
-      originalVideo.addEventListener('loadedmetadata', () => {
-        canvas.width = originalVideo.videoWidth;
-        canvas.height = originalVideo.videoHeight;
-      });
+      if (!ctx) {
+        throw new Error('无法创建canvas上下文');
+      }
       
-      // Create MediaRecorder to record the merged video
+      // Set canvas dimensions to match video
+      canvas.width = originalVideo.videoWidth || 1280;
+      canvas.height = originalVideo.videoHeight || 720;
+      
+      addLog("开始拼接视频帧...");
+      
+      const chunks: Blob[] = [];
       const stream = canvas.captureStream(30); // 30 FPS
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-      const chunks: BlobPart[] = [];
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9'
+      });
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -86,50 +96,41 @@ export const useVideoCompiler = () => {
         }
       };
       
-      const mergedBlob = await new Promise<Blob>((resolve, reject) => {
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          resolve(blob);
-        };
-        
-        mediaRecorder.onerror = reject;
-        
-        // Start recording
-        mediaRecorder.start();
-        
-        let currentTime = 0;
-        const frameRate = 30;
-        const frameInterval = 1000 / frameRate;
-        
-        const drawFrame = () => {
-          if (currentTime < originalDuration) {
-            // Draw original video
-            originalVideo.currentTime = currentTime;
-            ctx.drawImage(originalVideo, 0, 0, canvas.width, canvas.height);
-          } else if (currentTime < originalDuration + generatedDuration) {
-            // Draw generated video
-            const generatedTime = currentTime - originalDuration;
-            generatedVideo.currentTime = generatedTime;
-            ctx.drawImage(generatedVideo, 0, 0, canvas.width, canvas.height);
-          } else {
-            // Finished recording
-            mediaRecorder.stop();
-            return;
-          }
-          
-          currentTime += frameInterval / 1000;
-          setTimeout(drawFrame, frameInterval);
-        };
-        
-        // Wait for both videos to be ready, then start drawing
-        Promise.all([
-          new Promise(resolve => originalVideo.addEventListener('canplaythrough', resolve)),
-          new Promise(resolve => generatedVideo.addEventListener('canplaythrough', resolve))
-        ]).then(() => {
-          addLog("开始合并视频帧...");
-          drawFrame();
-        }).catch(reject);
+      const recordingComplete = new Promise<void>((resolve) => {
+        mediaRecorder.onstop = () => resolve();
       });
+      
+      mediaRecorder.start();
+      
+      // Play original video first
+      originalVideo.currentTime = 0;
+      await originalVideo.play();
+      
+      const startTime = Date.now();
+      const drawFrame = () => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        
+        if (elapsed < originalDuration) {
+          // Draw original video
+          originalVideo.currentTime = elapsed;
+          ctx.drawImage(originalVideo, 0, 0, canvas.width, canvas.height);
+          requestAnimationFrame(drawFrame);
+        } else if (elapsed < originalDuration + generatedDuration) {
+          // Draw generated video
+          const generatedTime = elapsed - originalDuration;
+          generatedVideo.currentTime = generatedTime;
+          ctx.drawImage(generatedVideo, 0, 0, canvas.width, canvas.height);
+          requestAnimationFrame(drawFrame);
+        } else {
+          // Recording complete
+          mediaRecorder.stop();
+        }
+      };
+      
+      drawFrame();
+      await recordingComplete;
+      
+      const mergedBlob = new Blob(chunks, { type: 'video/webm' });
       
       // Clean up
       URL.revokeObjectURL(originalVideoUrl);
@@ -178,22 +179,55 @@ export const useVideoCompiler = () => {
           setProgress({ stage: 'video_merging', progress: 85 });
           addLog("正在拼接原始视频和生成的视频...");
           
-          // Merge original video with generated video
-          const mergedVideoUrl = await mergeVideos(originalVideoBlob!, statusData.videoUrl, addLog);
-          
-          addLog("✅ 视频拼接完成！");
-          setProgress({ stage: 'completed', progress: 100 });
-          setResult({
-            videoUrl: mergedVideoUrl,
-            prompt: statusData.prompt || ''
-          });
-          addLog("🎉 完整视频准备就绪！");
-          
-          // Update task in database with merged video URL
-          await updateTask(taskId, {
-            status: 'completed',
-            video_url: mergedVideoUrl
-          });
+          // Download and store the generated video blob
+          try {
+            const response = await fetch(statusData.videoUrl);
+            const generatedBlob = await response.blob();
+            setGeneratedVideoBlob(generatedBlob);
+            
+            // Create object URL for generated video
+            const generatedVideoObjectUrl = URL.createObjectURL(generatedBlob);
+            
+            // Extract last frame image from original video
+            const lastFrameImageData = await extractLastFrameFromVideo(originalVideoBlob!);
+            const lastFrameImageUrl = `data:image/png;base64,${lastFrameImageData}`;
+            setLastFrameImage(lastFrameImageUrl);
+            
+            // Merge original video with generated video
+            const mergedVideoUrl = await mergeVideos(originalVideoBlob!, statusData.videoUrl, addLog);
+            
+            addLog("✅ 视频拼接完成！");
+            setProgress({ stage: 'completed', progress: 100 });
+            
+            // Get the current prompt from the polling data or use a default
+            const currentPrompt = statusData.prompt || '';
+            
+            setResult({
+              videoUrl: mergedVideoUrl,
+              prompt: currentPrompt,
+              generatedVideoUrl: generatedVideoObjectUrl,
+              originalVideoUrl: URL.createObjectURL(originalVideoBlob!),
+              lastFrameImageUrl: lastFrameImageUrl
+            });
+            addLog("🎉 完整视频准备就绪！");
+            
+            // Update task in database with merged video URL
+            await updateTask(taskId, {
+              status: 'completed',
+              video_url: mergedVideoUrl
+            });
+            
+          } catch (downloadError) {
+            console.error('Error downloading generated video:', downloadError);
+            addLog(`❌ 下载生成视频失败: ${downloadError instanceof Error ? downloadError.message : '未知错误'}`);
+            
+            // Fallback: still show the generated video URL
+            setResult({
+              videoUrl: statusData.videoUrl,
+              prompt: statusData.prompt || '',
+              generatedVideoUrl: statusData.videoUrl
+            });
+          }
           
           return;
         } else if (statusData.status === 'processing') {
@@ -253,6 +287,10 @@ export const useVideoCompiler = () => {
       setProgress({ stage: 'processing', progress: 20 });
       
       const imageBase64 = await extractLastFrameFromVideo(videoBlob);
+      
+      // Store the last frame image for display
+      const lastFrameImageUrl = `data:image/png;base64,${imageBase64}`;
+      setLastFrameImage(lastFrameImageUrl);
       
       addLog("最后一帧提取完成，准备生成延续视频...");
       setProgress({ stage: 'processing', progress: 40 });
@@ -314,6 +352,18 @@ export const useVideoCompiler = () => {
     }
   }, [saveTask, updateTask, taskId, pollTaskStatus]);
 
+  const reset = useCallback(() => {
+    setIsProcessing(false);
+    setResult(null);
+    setError(null);
+    setStatusLog([]);
+    setProgress(null);
+    setTaskId(null);
+    setOriginalVideoBlob(null);
+    setGeneratedVideoBlob(null);
+    setLastFrameImage(null);
+  }, []);
+
   return {
     compileVideo,
     isProcessing,
@@ -321,6 +371,8 @@ export const useVideoCompiler = () => {
     error,
     statusLog,
     progress,
-    taskId
+    taskId,
+    reset,
+    lastFrameImage
   };
 };
