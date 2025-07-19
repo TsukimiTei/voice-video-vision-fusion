@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Camera, Play, X, Loader2, Download, CheckCircle, FlipHorizontal } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useVideoCompiler } from '../hooks/useVideoCompiler';
@@ -291,7 +291,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         
         {/* Controls - 32px below camera */}
         <div className="px-4" style={{ marginTop: '32px' }}>
-          <div className="flex items-center justify-center gap-4 max-w-sm mx-auto">
+          <div className="flex items-center justify-center max-w-sm mx-auto relative">
             {/* Record Button - Center */}
             <div className="relative">
               <div 
@@ -308,14 +308,14 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
               </div>
             </div>
             
-            {/* Camera Switch Button - Right of record button */}
+            {/* Camera Switch Button - Absolute positioned to the right */}
             <Button 
               onClick={switchCamera} 
               variant="outline" 
               size="icon"
-              className="w-12 h-12 rounded-full ml-4"
+              className="w-12 h-12 rounded-full bg-gray-700 border-gray-600 hover:bg-gray-600 absolute right-0"
             >
-              <RotateCcw className="h-5 w-5" />
+              <FlipHorizontal className="h-5 w-5 text-white" />
             </Button>
           </div>
           
