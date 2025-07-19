@@ -7,6 +7,7 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useVideoCompiler } from '../hooks/useVideoCompiler';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 import { toast } from 'sonner';
+import { extractLastFrameFromVideo } from '../utils/videoFrameExtractor';
 
 interface VideoCompilerProps {
   onBack: () => void;
@@ -131,7 +132,7 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         }
       };
       
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/mp4' });
         setRecordedBlob(blob);
         const url = URL.createObjectURL(blob);
@@ -140,8 +141,9 @@ export const VideoCompiler = ({ onBack }: VideoCompilerProps) => {
         // Stop speech recognition first
         stopListening();
         
-        // Direct check and proceed - remove the problematic dialog check
-        // The actual compilation logic will handle the transcript validation
+        // Extract last frame from video for Kling AI API
+        console.log('Extracting last frame from recorded video...');
+        
         console.log('Recording stopped, proceeding to processing');
         setViewState('processing');
       };

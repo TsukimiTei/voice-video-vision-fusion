@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { extractLastFrameFromVideo } from '../utils/videoFrameExtractor';
 
 export interface VideoCompilerResult {
   videoUrl: string;
@@ -44,30 +45,14 @@ export const useVideoCompiler = () => {
         throw new Error(`视频过大: ${videoSizeMB.toFixed(2)}MB，最大支持50MB`);
       }
       
-      // Convert video blob to base64 in chunks to prevent memory issues
-      addLog("开始转换视频格式...");
-      const arrayBuffer = await videoBlob.arrayBuffer();
+      // Extract last frame from video for Kling AI image-to-video API
+      addLog("正在从视频中提取最后一帧...");
+      setProgress({ stage: 'processing', progress: 20 });
       
-      // Check if array buffer is too large
-      if (arrayBuffer.byteLength > 50 * 1024 * 1024) {
-        addLog("❌ 视频数据过大，无法处理");
-        throw new Error("视频数据过大，无法处理");
-      }
+      const imageBase64 = await extractLastFrameFromVideo(videoBlob);
       
-      // Convert to base64 safely without spreading large arrays
-      const uint8Array = new Uint8Array(arrayBuffer);
-      let binaryString = '';
-      const chunkSize = 8192; // Process in chunks to avoid call stack issues
-      
-      for (let i = 0; i < uint8Array.length; i += chunkSize) {
-        const chunk = uint8Array.slice(i, i + chunkSize);
-        binaryString += String.fromCharCode.apply(null, Array.from(chunk));
-      }
-      
-      const videoBase64 = btoa(binaryString);
-      
-      addLog("视频转换完成，准备上传...");
-      setProgress({ stage: 'processing', progress: 30 });
+      addLog("最后一帧提取完成，准备生成延续视频...");
+      setProgress({ stage: 'processing', progress: 40 });
       
       addLog("开始提交视频编译请求...");
       setProgress({ stage: 'video_generation', progress: 50 });
@@ -76,7 +61,7 @@ export const useVideoCompiler = () => {
       const { data: compileData, error: compileError } = await supabase.functions.invoke('compile-video', {
         body: {
           prompt,
-          video_base64: videoBase64
+          image_base64: imageBase64 // Send image data instead of video data
         }
       });
 

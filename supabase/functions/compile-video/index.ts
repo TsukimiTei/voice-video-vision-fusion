@@ -9,7 +9,7 @@ const KLING_API_BASE_URL = 'https://api.klingai.com'
 
 interface CompileVideoRequest {
   prompt: string;
-  video_base64: string;
+  image_base64: string; // Changed from video_base64 to image_base64
 }
 
 serve(async (req) => {
@@ -38,19 +38,19 @@ serve(async (req) => {
       );
     }
     
-    const { prompt, video_base64 }: CompileVideoRequest = body;
+    const { prompt, image_base64 }: CompileVideoRequest = body;
     
     console.log('Request parsed successfully:', { 
       prompt: prompt ? prompt.substring(0, 100) + '...' : 'undefined', 
-      videoSize: video_base64 ? video_base64.length : 0 
+      imageSize: image_base64 ? image_base64.length : 0 
     });
 
-    if (!prompt || !video_base64) {
-      console.error('Missing required fields:', { hasPrompt: !!prompt, hasVideo: !!video_base64 });
+    if (!prompt || !image_base64) {
+      console.error('Missing required fields:', { hasPrompt: !!prompt, hasImage: !!image_base64 });
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Missing required fields: prompt and video_base64 are required' 
+          error: 'Missing required fields: prompt and image_base64 are required' 
         }),
         { 
           status: 400, 
@@ -59,16 +59,16 @@ serve(async (req) => {
       );
     }
 
-    // Check video size (base64 should be reasonable size)
-    const videoSizeMB = (video_base64.length * 3 / 4) / (1024 * 1024); // Convert base64 to actual size
-    console.log(`Video size: ${videoSizeMB.toFixed(2)} MB`);
+    // Check image size (base64 should be reasonable size)
+    const imageSizeMB = (image_base64.length * 3 / 4) / (1024 * 1024); // Convert base64 to actual size
+    console.log(`Image size: ${imageSizeMB.toFixed(2)} MB`);
     
-    if (videoSizeMB > 50) {
-      console.error('Video too large:', videoSizeMB, 'MB');
+    if (imageSizeMB > 10) {
+      console.error('Image too large:', imageSizeMB, 'MB');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Video too large: ${videoSizeMB.toFixed(2)}MB. Maximum size is 50MB.` 
+          error: `Image too large: ${imageSizeMB.toFixed(2)}MB. Maximum size is 10MB.` 
         }),
         { 
           status: 413, 
@@ -77,13 +77,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing video with Kling AI...');
+    console.log('Processing image with Kling AI...');
     
-    // Extract/prepare video data for Kling AI
-    const videoData = await extractLastFrame(video_base64);
-    
-    // Call Kling AI API for video-to-video generation
-    const klingResponse = await callKlingAI(videoData, prompt);
+    // Call Kling AI API directly with image data
+    const klingResponse = await callKlingAI(image_base64, prompt);
     
     if (!klingResponse.success) {
       console.error('Kling AI API failed:', klingResponse.error);
@@ -99,18 +96,15 @@ serve(async (req) => {
       );
     }
     
-    console.log('Video generated successfully, merging with original...');
+    console.log('Video generated successfully');
     
-    // Mock video merging process
-    // In a real implementation, you would use FFmpeg to concatenate videos
-    const mergedVideoUrl = await mockVideoMerging(video_base64, klingResponse.videoUrl);
-    
+    // Return the generated video URL directly (no merging needed for image-to-video)
     console.log('Video compilation completed successfully');
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        videoUrl: mergedVideoUrl 
+        videoUrl: klingResponse.videoUrl 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -131,33 +125,6 @@ serve(async (req) => {
     );
   }
 });
-
-// Extract last frame from video (Deno-compatible implementation)
-async function extractLastFrame(videoBase64: string): Promise<string> {
-  console.log('Processing video data for Kling AI...');
-  
-  try {
-    // Since we're in Deno environment without DOM APIs, 
-    // we'll send the video data directly to Kling AI
-    // Kling AI can handle video data and extract frames on their end
-    
-    // Validate and potentially compress the video data
-    const maxVideoSize = 50 * 1024 * 1024; // 50MB limit
-    
-    if (videoBase64.length > maxVideoSize) {
-      console.log('Video too large, compressing...');
-      // Take a portion of the video data (this is a fallback)
-      return videoBase64.substring(0, maxVideoSize);
-    }
-    
-    console.log(`Video data ready for Kling AI (${videoBase64.length} chars)`);
-    return videoBase64;
-    
-  } catch (error) {
-    console.error('Error processing video data:', error);
-    throw new Error('Failed to process video data');
-  }
-}
 
 // Call official Kling AI API for image-to-video generation
 async function callKlingAI(imageBase64: string, prompt: string) {
@@ -282,7 +249,6 @@ async function createHmacSha256Signature(message: string, secret: string): Promi
   return base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-
 // Poll official Kling AI task status until completion
 async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey: string): Promise<string> {
   const maxAttempts = 30; // 5 minutes max
@@ -333,23 +299,4 @@ async function pollKlingTaskStatus(taskId: string, accessKey: string, secretKey:
   }
   
   throw new Error('Video generation timed out');
-}
-
-// Video merging function (simplified implementation)
-async function mockVideoMerging(originalVideoBase64: string, generatedVideoUrl: string) {
-  console.log('Starting video merging process...');
-  
-  // Simulate video processing delay
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  
-  // In a real implementation, you would:
-  // 1. Download the generated video from generatedVideoUrl
-  // 2. Use FFmpeg to concatenate originalVideo + generatedVideo
-  // 3. Upload the merged video to a CDN/storage service
-  // 4. Return the URL of the merged video
-  
-  console.log('Video merging completed (mock)');
-  
-  // For now, return the generated video URL as the merged result
-  return generatedVideoUrl;
 }
