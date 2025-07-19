@@ -102,32 +102,43 @@ export const useVideoCompiler = () => {
       
       mediaRecorder.start();
       
-      // Play original video first
+      // Set up video playback and drawing
       originalVideo.currentTime = 0;
-      await originalVideo.play();
+      generatedVideo.currentTime = 0;
       
-      const startTime = Date.now();
+      const fps = 30;
+      const frameInterval = 1000 / fps;
+      let frameCount = 0;
+      const totalFrames = Math.floor((originalDuration + generatedDuration) * fps);
+      
       const drawFrame = () => {
-        const elapsed = (Date.now() - startTime) / 1000;
+        const currentTime = frameCount / fps;
         
-        if (elapsed < originalDuration) {
-          // Draw original video
-          originalVideo.currentTime = elapsed;
+        if (currentTime < originalDuration) {
+          // Draw original video frame
+          originalVideo.currentTime = currentTime;
           ctx.drawImage(originalVideo, 0, 0, canvas.width, canvas.height);
-          requestAnimationFrame(drawFrame);
-        } else if (elapsed < originalDuration + generatedDuration) {
-          // Draw generated video
-          const generatedTime = elapsed - originalDuration;
+        } else if (currentTime < originalDuration + generatedDuration) {
+          // Draw generated video frame
+          const generatedTime = currentTime - originalDuration;
           generatedVideo.currentTime = generatedTime;
           ctx.drawImage(generatedVideo, 0, 0, canvas.width, canvas.height);
-          requestAnimationFrame(drawFrame);
         } else {
           // Recording complete
+          mediaRecorder.stop();
+          return;
+        }
+        
+        frameCount++;
+        if (frameCount < totalFrames) {
+          setTimeout(drawFrame, frameInterval);
+        } else {
           mediaRecorder.stop();
         }
       };
       
-      drawFrame();
+      // Start drawing frames
+      setTimeout(drawFrame, 100); // Small delay to ensure videos are ready
       await recordingComplete;
       
       const mergedBlob = new Blob(chunks, { type: 'video/webm' });

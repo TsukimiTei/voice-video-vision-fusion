@@ -37,7 +37,7 @@ const VideoTaskResult: React.FC<VideoTaskResultProps> = ({ task, onBack, onCreat
           <div className="space-y-6">
             {/* Final generated video */}
             <div className="text-center space-y-4">
-              <h2 className="text-lg font-semibold">生成的视频</h2>
+              <h2 className="text-lg font-semibold">最终拼接视频</h2>
               <div className="max-w-2xl mx-auto">
                 <video 
                   controls 
@@ -45,10 +45,11 @@ const VideoTaskResult: React.FC<VideoTaskResultProps> = ({ task, onBack, onCreat
                   src={task.video_url}
                 />
               </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  生成提示词: {task.prompt}
-                </p>
+              <div className="space-y-3">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">生成提示词:</p>
+                  <p className="text-base">{task.prompt}</p>
+                </div>
                 <div className="flex gap-2 justify-center">
                   <Button onClick={handleDownloadVideo}>
                     <Download className="w-4 h-4 mr-2" />
