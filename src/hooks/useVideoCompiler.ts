@@ -19,6 +19,7 @@ export const useVideoCompiler = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusLog, setStatusLog] = useState<string[]>([]);
   const [progress, setProgress] = useState<CompilerProgress | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
 
   const compileVideo = useCallback(async (videoBlob: Blob, prompt: string) => {
     setIsProcessing(true);
@@ -26,6 +27,7 @@ export const useVideoCompiler = () => {
     setResult(null);
     setStatusLog([]);
     setProgress(null);
+    setTaskId(null);
 
     const addLog = (message: string) => {
       const timestamp = new Date().toLocaleTimeString();
@@ -59,17 +61,15 @@ export const useVideoCompiler = () => {
       
       console.log('About to call compile-video function with:', { prompt, imageLength: imageBase64.length });
       
-      // Call Supabase Edge Function for video compilation
+      // Call Supabase Edge Function to start video generation
       const { data: compileData, error: compileError } = await supabase.functions.invoke('compile-video', {
         body: {
           prompt,
-          image_base64: imageBase64 // Send image data instead of video data
+          image_base64: imageBase64
         }
       });
 
       console.log('Supabase response:', { compileData, compileError });
-      console.log('CompileData type:', typeof compileData);
-      console.log('CompileError type:', typeof compileError);
 
       if (compileError) {
         console.error('Supabase function error details:', compileError);
@@ -78,24 +78,20 @@ export const useVideoCompiler = () => {
         throw new Error(`Edge Function调用失败: ${errorMsg}`);
       }
 
-      addLog(`📡 收到 Edge Function 响应`);
-      setProgress({ stage: 'video_merging', progress: 80 });
-      
-      if (compileData.success && compileData.videoUrl) {
-        addLog("✅ 视频编译完成！");
-        setProgress({ stage: 'completed', progress: 100 });
-        setResult({
-          videoUrl: compileData.videoUrl,
-          prompt
-        });
-        addLog("🎉 视频下载成功！");
-        return;
+      if (!compileData.success || !compileData.taskId) {
+        addLog("❌ 提交视频生成请求失败");
+        throw new Error(compileData.error || '视频生成任务创建失败');
       }
+
+      const currentTaskId = compileData.taskId;
+      setTaskId(currentTaskId);
+      addLog(`📡 视频生成任务已提交，任务ID: ${currentTaskId}`);
+      addLog("正在等待视频生成完成...");
+      setProgress({ stage: 'video_generation', progress: 60 });
       
-      if (!compileData.success) {
-        addLog("❌ 视频编译失败");
-        throw new Error(compileData.error || '视频编译失败');
-      }
+      // Start polling for task status
+      await pollTaskStatus(currentTaskId, addLog);
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to compile video';
       addLog(`❌ 错误: ${errorMessage}`);
@@ -106,12 +102,66 @@ export const useVideoCompiler = () => {
     }
   }, []);
 
+  const pollTaskStatus = useCallback(async (taskId: string, addLog: (message: string) => void) => {
+    const maxAttempts = 120; // 20 minutes max (10 seconds * 120)
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      try {
+        addLog(`检查任务状态 (${attempts + 1}/${maxAttempts})...`);
+        
+        const { data: statusData, error: statusError } = await supabase.functions.invoke('check-video-status', {
+          body: { taskId }
+        });
+
+        if (statusError) {
+          console.error('Status check error:', statusError);
+          addLog(`❌ 状态检查失败: ${statusError.message}`);
+          throw new Error(`状态检查失败: ${statusError.message}`);
+        }
+
+        if (!statusData.success) {
+          addLog(`❌ 任务失败: ${statusData.error}`);
+          throw new Error(statusData.error || '视频生成失败');
+        }
+
+        if (statusData.status === 'completed' && statusData.videoUrl) {
+          addLog("✅ 视频生成完成！");
+          setProgress({ stage: 'completed', progress: 100 });
+          setResult({
+            videoUrl: statusData.videoUrl,
+            prompt: statusData.prompt || ''
+          });
+          addLog("🎉 视频准备就绪！");
+          return;
+        } else if (statusData.status === 'processing') {
+          addLog(`⏳ 任务进行中: ${statusData.message || '处理中...'}`);
+          setProgress({ stage: 'video_generation', progress: 60 + (attempts * 30 / maxAttempts) });
+        } else if (statusData.status === 'failed') {
+          addLog(`❌ 任务失败: ${statusData.error}`);
+          throw new Error(statusData.error || '视频生成失败');
+        }
+        
+        // Wait 10 seconds before next check
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        attempts++;
+        
+      } catch (error) {
+        console.error('Error during task status polling:', error);
+        throw error;
+      }
+    }
+    
+    throw new Error(`视频生成超时，已等待 ${maxAttempts * 10} 秒`);
+  }, []);
+
   return {
     compileVideo,
     isProcessing,
     result,
     error,
     statusLog,
-    progress
+    progress,
+    taskId
   };
 };

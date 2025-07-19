@@ -26,60 +26,45 @@ serve(async (req) => {
   try {
     console.log('Request received successfully');
     
-    // Add timeout for the entire request
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Function timeout after 9 minutes')), 9 * 60 * 1000);
+    // Parse request body with error handling
+    let body: CompileVideoRequest;
+    try {
+      body = await req.json() as CompileVideoRequest;
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
+    
+    const { prompt, image_base64 } = body;
+    
+    console.log('Request parsed:', { 
+      hasPrompt: !!prompt, 
+      hasImage: !!image_base64,
+      promptLength: prompt?.length || 0,
+      imageLength: image_base64?.length || 0
     });
-    
-    const processPromise = async () => {
-      // Parse request body with error handling
-      let body: CompileVideoRequest;
-      try {
-        body = await req.json() as CompileVideoRequest;
-      } catch (parseError) {
-        console.error('Failed to parse request body:', parseError);
-        throw new Error('Invalid JSON in request body');
-      }
-      
-      const { prompt, image_base64 } = body;
-      
-      console.log('Request parsed:', { 
-        hasPrompt: !!prompt, 
-        hasImage: !!image_base64,
-        promptLength: prompt?.length || 0,
-        imageLength: image_base64?.length || 0
-      });
 
-      if (!prompt || !image_base64) {
-        console.error('Missing required fields:', { hasPrompt: !!prompt, hasImage: !!image_base64 });
-        throw new Error('Missing required fields: prompt and image_base64 are required');
-      }
+    if (!prompt || !image_base64) {
+      console.error('Missing required fields:', { hasPrompt: !!prompt, hasImage: !!image_base64 });
+      throw new Error('Missing required fields: prompt and image_base64 are required');
+    }
 
-      console.log('Processing image with Kling AI...');
-      
-      // Call Kling AI API
-      const klingResponse = await callKlingAI(image_base64, prompt);
-      
-      console.log('Kling AI response received:', { success: klingResponse.success });
-      
-      if (!klingResponse.success) {
-        console.error('Kling AI API failed:', klingResponse.error);
-        throw new Error(klingResponse.error || 'Video generation failed');
-      }
-      
-      console.log('Video generated successfully');
-      
-      return {
-        success: true,
-        videoUrl: klingResponse.videoUrl
-      };
-    };
+    console.log('Starting video generation process...');
     
-    // Race between the actual process and timeout
-    const result = await Promise.race([processPromise(), timeoutPromise]);
+    // Start the video generation as a background task
+    const backgroundTaskPromise = submitVideoGeneration(image_base64, prompt);
+    
+    // Don't wait for the background task to complete - return task ID immediately
+    EdgeRuntime.waitUntil(backgroundTaskPromise);
+    
+    const taskId = await backgroundTaskPromise;
     
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({
+        success: true,
+        taskId: taskId,
+        message: 'Video generation started. Use the task ID to check status.'
+      }),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -95,8 +80,6 @@ serve(async (req) => {
     
     if (errorMessage.includes('Missing required fields') || errorMessage.includes('Invalid JSON')) {
       statusCode = 400;
-    } else if (errorMessage.includes('timeout')) {
-      statusCode = 408;
     }
     
     return new Response(
@@ -111,6 +94,111 @@ serve(async (req) => {
     );
   }
 });
+
+// Submit video generation and return task ID immediately
+async function submitVideoGeneration(imageBase64: string, prompt: string): Promise<string> {
+  const accessKey = Deno.env.get('KLING_ACCESS_KEY');
+  const secretKey = Deno.env.get('KLING_SECRET_KEY');
+  
+  console.log('Kling AI credentials check:', { 
+    hasAccessKey: !!accessKey, 
+    hasSecretKey: !!secretKey,
+    accessKeyPrefix: accessKey ? accessKey.substring(0, 8) + '...' : 'undefined',
+    secretKeyLength: secretKey ? secretKey.length : 0
+  });
+  
+  if (!accessKey || !secretKey) {
+    console.error('Kling AI API keys not configured');
+    throw new Error('Kling AI API keys not configured. Please set KLING_ACCESS_KEY and KLING_SECRET_KEY.');
+  }
+
+  try {
+    console.log('Generating JWT token for Kling AI...');
+    const jwtToken = await generateKlingJWT(accessKey, secretKey);
+    console.log('JWT token generated successfully');
+    
+    // Extract pure base64 data (remove data URL prefix if present)
+    let pureBase64 = imageBase64;
+    if (imageBase64.startsWith('data:')) {
+      const base64Index = imageBase64.indexOf(',');
+      if (base64Index !== -1) {
+        pureBase64 = imageBase64.substring(base64Index + 1);
+      }
+    }
+    
+    console.log('Image base64 format check:', {
+      originalLength: imageBase64.length,
+      pureBase64Length: pureBase64.length,
+      isDataUrl: imageBase64.startsWith('data:')
+    });
+    
+    // Prepare request body according to official API documentation
+    const requestBody = {
+      "model_name": "kling-v1", 
+      "mode": "pro",
+      "duration": "5",
+      "image": pureBase64,  // Just the pure base64 data, no data URL prefix
+      "prompt": prompt,
+      "cfg_scale": 0.5
+    };
+
+    console.log('Sending request to official Kling AI API...');
+    console.log('Request details:', {
+      url: `${KLING_API_BASE_URL}/v1/videos/image2video`,
+      model: requestBody.model_name,
+      mode: requestBody.mode,
+      prompt: prompt.substring(0, 100) + '...',
+      imageDataLength: pureBase64.length
+    });
+    
+    const response = await fetch(`${KLING_API_BASE_URL}/v1/videos/image2video`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwtToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('Kling API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Kling AI API error response:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText: errorText
+      });
+      
+      // Parse error if it's JSON
+      let errorMessage = `${response.status} ${response.statusText}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      throw new Error(`Kling AI API error: ${errorMessage}`);
+    }
+
+    const result = await response.json();
+    console.log('Kling AI API successful response:', result);
+    
+    // According to the official docs, successful response should have code: 0
+    if (result.code === 0 && result.data?.task_id) {
+      console.log('Task submitted successfully, task_id:', result.data.task_id);
+      return result.data.task_id;
+    } else {
+      console.error('Unexpected API response format:', result);
+      throw new Error(result.message || result.error || 'Unexpected response format from Kling AI API');
+    }
+
+  } catch (error) {
+    console.error('Error calling Kling AI API:', error);
+    throw new Error(`Error calling Kling AI API: ${error.message}`);
+  }
+}
 
 // Call official Kling AI API for image-to-video generation
 async function callKlingAI(imageBase64: string, prompt: string) {
