@@ -22,6 +22,7 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
   const [viewState, setViewState] = useState<ViewState>('home');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
+  const [lastFrameImage, setLastFrameImage] = useState<string | null>(null);
   const [showNoSpeechDialog, setShowNoSpeechDialog] = useState(false);
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [showModerationDialog, setShowModerationDialog] = useState(false);
@@ -146,6 +147,13 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
         
         // Extract last frame from video for Kling AI API
         console.log('Extracting last frame from recorded video...');
+        try {
+          const lastFrame = await extractLastFrameFromVideo(blob);
+          setLastFrameImage(`data:image/jpeg;base64,${lastFrame}`);
+          console.log('Last frame extracted successfully');
+        } catch (error) {
+          console.error('Failed to extract last frame:', error);
+        }
         
         console.log('Recording stopped, proceeding to processing');
         setViewState('processing');
@@ -173,6 +181,7 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
     
     setViewState('home');
     setRecordedBlob(null);
+    setLastFrameImage(null);
     setConfirmedTranscript('');
     if (recordedVideoUrl) {
       URL.revokeObjectURL(recordedVideoUrl);
@@ -418,27 +427,68 @@ const VideoCompiler = ({ onBack, selectedTask }: VideoCompilerProps) => {
           
           {/* Show video result */}
           {(result || (selectedTask?.status === 'completed' && selectedTask.video_url)) && (
-            <div className="text-center space-y-4">
-              <div className="max-w-2xl mx-auto">
-                <video 
-                  controls 
-                  className="w-full rounded-lg shadow-lg"
-                  src={result?.videoUrl || selectedTask?.video_url}
-                />
+            <div className="space-y-6">
+              {/* Final merged video */}
+              <div className="text-center space-y-4">
+                <h2 className="text-lg font-semibold">最终拼接视频</h2>
+                <div className="max-w-2xl mx-auto">
+                  <video 
+                    controls 
+                    className="w-full rounded-lg shadow-lg"
+                    src={result?.videoUrl || selectedTask?.video_url}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    生成提示词: {result?.prompt || selectedTask?.prompt}
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={handleDownloadResult}>
+                      <Download className="w-4 h-4 mr-2" />
+                      下载视频
+                    </Button>
+                    <Button variant="outline" onClick={handleReset}>
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      生成新视频
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  生成提示词: {result?.prompt || selectedTask?.prompt}
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button onClick={handleDownloadResult}>
-                    <Download className="w-4 h-4 mr-2" />
-                    下载视频
-                  </Button>
-                  <Button variant="outline" onClick={handleReset}>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    生成新视频
-                  </Button>
+
+              {/* Process breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Original recorded video */}
+                {recordedVideoUrl && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-center">原始录制视频</h3>
+                    <video 
+                      controls 
+                      className="w-full rounded-lg shadow-sm aspect-video object-cover"
+                      src={recordedVideoUrl}
+                    />
+                  </div>
+                )}
+
+                {/* Last frame image */}
+                {lastFrameImage && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-center">最后一帧画面</h3>
+                    <img 
+                      src={lastFrameImage}
+                      alt="Last frame" 
+                      className="w-full rounded-lg shadow-sm aspect-video object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Generated video (would need API to return this separately) */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-center">AI生成视频</h3>
+                  <div className="w-full aspect-video bg-muted rounded-lg flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground text-center px-2">
+                      生成的视频已合并到最终结果中
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
