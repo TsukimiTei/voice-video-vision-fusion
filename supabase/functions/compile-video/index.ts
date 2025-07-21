@@ -134,7 +134,7 @@ async function submitVideoGeneration(imageBase64: string, prompt: string): Promi
     
     // Prepare request body according to official API documentation
     const requestBody = {
-      "model_name": "kling-v1-5", 
+      "model_name": "kling-v2-1", 
       "mode": "pro",
       "duration": "5",
       "image": pureBase64,  // Just the pure base64 data, no data URL prefix
@@ -246,7 +246,7 @@ async function callKlingAI(imageBase64: string, prompt: string) {
     
     // Prepare request body according to official API documentation
     const requestBody = {
-      "model_name": "kling-v1-5", 
+      "model_name": "kling-v2-1", 
       "mode": "pro",
       "duration": "5",
       "image": pureBase64,  // Just the pure base64 data, no data URL prefix
