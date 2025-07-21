@@ -85,19 +85,28 @@ export const useVideoTasks = () => {
     try {
       await setSessionContext();
       
+      console.log('Updating task:', taskId, 'with updates:', updates);
+      
       const { data, error } = await supabase
         .from('video_tasks')
         .update(updates)
-        .eq('task_id', taskId);
+        .eq('task_id', taskId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update task error:', error);
+        throw error;
+      }
+
+      console.log('Task update successful, returned data:', data);
 
       // Update local state
       setTasks(prev => prev.map(task => 
         task.task_id === taskId ? { ...task, ...updates } as VideoTask : task
       ));
       
-      return { ...updates, task_id: taskId } as VideoTask;
+      return data as VideoTask;
     } catch (err) {
       console.error('Error updating task:', err);
       setError(err instanceof Error ? err.message : 'Failed to update task');

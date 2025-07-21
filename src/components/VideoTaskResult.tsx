@@ -12,6 +12,14 @@ interface VideoTaskResultProps {
 }
 
 const VideoTaskResult: React.FC<VideoTaskResultProps> = ({ task, onBack, onCreateNew }) => {
+  console.log('VideoTaskResult received task:', {
+    task_id: task.task_id,
+    status: task.status,
+    video_url: task.video_url,
+    original_video_url: task.original_video_url,
+    generated_video_url: task.generated_video_url
+  });
+
   const handleDownloadVideo = () => {
     if (task.video_url) {
       const link = document.createElement('a');

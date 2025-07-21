@@ -230,6 +230,8 @@ export const useVideoCompiler = () => {
               generated_video_url: statusData.videoUrl // Use the original Kling URL, not the object URL
             });
             
+            console.log('Task updated successfully with generated_video_url:', statusData.videoUrl);
+            
           } catch (downloadError) {
             console.error('Error downloading generated video:', downloadError);
             addLog(`❌ 下载生成视频失败: ${downloadError instanceof Error ? downloadError.message : '未知错误'}`);
@@ -247,6 +249,8 @@ export const useVideoCompiler = () => {
               video_url: statusData.videoUrl,
               generated_video_url: statusData.videoUrl
             });
+            
+            console.log('Task updated (fallback) with generated_video_url:', statusData.videoUrl);
           }
           
           return;
