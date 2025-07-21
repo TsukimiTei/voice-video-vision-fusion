@@ -139,7 +139,8 @@ async function submitVideoGeneration(imageBase64: string, prompt: string): Promi
       "duration": "5",
       "image": pureBase64,  // Just the pure base64 data, no data URL prefix
       "prompt": prompt,
-      "cfg_scale": 0.5
+      "cfg_scale": 0.5,
+      "enable_audio": true
     };
 
     console.log('Sending request to official Kling AI API...');
@@ -251,7 +252,8 @@ async function callKlingAI(imageBase64: string, prompt: string) {
       "duration": "5",
       "image": pureBase64,  // Just the pure base64 data, no data URL prefix
       "prompt": prompt,
-      "cfg_scale": 0.5
+      "cfg_scale": 0.5,
+      "enable_audio": true
     };
 
     console.log('Sending request to official Kling AI API...');
