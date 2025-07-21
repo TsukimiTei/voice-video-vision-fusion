@@ -156,20 +156,103 @@ const SeamlessVideoPlayer: React.FC<SeamlessVideoPlayerProps> = ({
     };
   }, []);
 
-  // If only generated video is available, show it directly
+  // If we don't have original video but have generated video, simulate seamless playback
   if (!originalVideoUrl && generatedVideoUrl) {
     return (
       <div className={`space-y-4 ${className}`}>
-        <div className="text-center space-y-4">
-          <div className="p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">仅显示AI生成视频</p>
-          </div>
-          <video 
-            controls 
+        <div className="relative">
+          <video
+            ref={videoRef}
             className="w-full rounded-lg shadow-lg"
-            src={generatedVideoUrl}
+            controls={false}
+            playsInline
+            onEnded={() => {
+              // Loop the video twice to simulate seamless playback
+              if (videoRef.current) {
+                if (currentPhase === 'generated') {
+                  setCurrentPhase('none');
+                  setIsPlaying(false);
+                } else {
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.play();
+                  setCurrentPhase('generated');
+                }
+              }
+            }}
           />
+          
+          {/* Video phase indicator */}
+          <div className="absolute top-2 left-2 px-3 py-1 bg-black/70 text-white text-sm rounded-md">
+            {currentPhase === 'generated' && '第二遍 - 生成视频'}
+            {currentPhase === 'none' && 'AI生成视频'}
+            {currentPhase === 'original' && '第一遍 - 生成视频'}
+          </div>
+
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+          )}
         </div>
+
+        {/* Custom controls */}
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (videoRef.current) {
+                if (isPlaying) {
+                  videoRef.current.pause();
+                  setIsPlaying(false);
+                } else {
+                  setCurrentPhase('original');
+                  videoRef.current.src = generatedVideoUrl;
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.play();
+                  setIsPlaying(true);
+                }
+              }
+            }}
+            disabled={isLoading}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlaying ? '暂停' : '连续播放'}
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.src = generatedVideoUrl;
+                videoRef.current.currentTime = 0;
+                setCurrentPhase('original');
+                setIsPlaying(false);
+              }
+            }}
+            disabled={isLoading}
+          >
+            <RotateCcw className="h-4 w-4" />
+            重新播放
+          </Button>
+        </div>
+
+        {/* Info about simulated seamless playback */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            使用生成视频模拟连续播放效果（播放两遍）
+          </p>
+        </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
