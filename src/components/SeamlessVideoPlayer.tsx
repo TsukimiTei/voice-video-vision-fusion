@@ -62,32 +62,36 @@ const SeamlessVideoPlayer: React.FC<SeamlessVideoPlayerProps> = ({
   };
 
   const setupSequentialPlayback = () => {
-    if (!videoRef.current || !originalVideoUrl) return;
+    if (!videoRef.current) return;
 
     const video = videoRef.current;
     
-    // Start with original video
-    video.src = originalVideoUrl;
-    setCurrentPhase('original');
-
+    // Remove all existing event listeners
+    const cleanupListeners = () => {
+      video.removeEventListener('ended', handleOriginalVideoEnd);
+      video.removeEventListener('ended', handleGeneratedVideoEnd);
+    };
+    
     const handleOriginalVideoEnd = () => {
-      if (generatedVideoUrl) {
+      if (generatedVideoUrl && currentPhase === 'original') {
+        cleanupListeners();
         video.src = generatedVideoUrl;
         setCurrentPhase('generated');
+        video.addEventListener('ended', handleGeneratedVideoEnd, { once: true });
         video.play().catch(console.error);
       }
     };
 
     const handleGeneratedVideoEnd = () => {
-      setCurrentPhase('none');
-      setIsPlaying(false);
+      if (currentPhase === 'generated') {
+        cleanupListeners();
+        setCurrentPhase('none');
+        setIsPlaying(false);
+      }
     };
 
-    // Remove existing listeners
-    video.removeEventListener('ended', handleOriginalVideoEnd);
-    video.removeEventListener('ended', handleGeneratedVideoEnd);
-
-    // Add appropriate listener based on current phase
+    cleanupListeners(); // Clean up any existing listeners
+    
     if (currentPhase === 'original') {
       video.addEventListener('ended', handleOriginalVideoEnd, { once: true });
     } else if (currentPhase === 'generated') {

@@ -70,6 +70,8 @@ export type Database = {
           prompt: string
           status: string
           video_url: string
+          original_video_url: string
+          generated_video_url: string
           error_message: string
           task_id: string
           user_session_id: string
