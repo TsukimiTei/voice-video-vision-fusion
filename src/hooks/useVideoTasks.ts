@@ -129,23 +129,9 @@ export const useVideoTasks = () => {
           console.log('Found existing tasks, adopting them to current session...');
           const currentSessionId = getSessionId();
           
-          // Update all existing tasks to current session so they become visible
-          const { error: updateError } = await supabase
-            .from('video_tasks')
-            .update({ user_session_id: currentSessionId })
-            .neq('user_session_id', currentSessionId); // Update only those not already assigned to current session
-          
-          if (!updateError) {
-            // Reload with updated session
-            await setSessionContext();
-            const { data: updatedData, error: updatedError } = await supabase
-              .from('video_tasks')
-              .select('*')
-              .order('created_at', { ascending: false });
-            
-            data = updatedData;
-            error = updatedError;
-          }
+          // For demo purposes, use the most recent task if it exists
+          data = allTasks.slice(0, 5); // Show last 5 tasks
+          console.log('Showing recent tasks for demo:', data);
         }
       }
 
