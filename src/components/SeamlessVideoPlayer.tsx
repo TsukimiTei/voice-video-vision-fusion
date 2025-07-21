@@ -158,8 +158,16 @@ const SeamlessVideoPlayer: React.FC<SeamlessVideoPlayerProps> = ({
 
   if (!originalVideoUrl && !generatedVideoUrl) {
     return (
-      <div className={`flex items-center justify-center p-8 bg-muted rounded-lg ${className}`}>
-        <p className="text-muted-foreground">没有可播放的视频</p>
+      <div className={`space-y-4 ${className}`}>
+        <div className="flex items-center justify-center p-8 bg-muted rounded-lg">
+          <div className="text-center space-y-2">
+            <p className="text-muted-foreground">无法加载无缝播放功能</p>
+            <p className="text-sm text-muted-foreground">
+              原始视频URL: {originalVideoUrl ? '✓' : '✗'} | 
+              生成视频URL: {generatedVideoUrl ? '✓' : '✗'}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

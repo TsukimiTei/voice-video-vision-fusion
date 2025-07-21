@@ -6,6 +6,7 @@ import { ImageEditor } from './ImageEditor';
 import VideoCompiler from './VideoCompiler';
 import VideoTaskHistory from './VideoTaskHistory';
 import VideoTaskResult from './VideoTaskResult';
+import TaskUpdater from './TaskUpdater';
 import { VideoTask } from '@/hooks/useVideoTasks';
 
 type ViewType = 'home' | 'recorder' | 'image-editor' | 'video-compiler' | 'task-history' | 'task-result';
@@ -113,6 +114,16 @@ const HomePage: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+            
+            {/* Temporary task updater for debugging */}
+            <Card className="p-4">
+              <CardHeader>
+                <CardTitle>Debug: Update Task</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TaskUpdater />
+              </CardContent>
+            </Card>
             
             <div className="text-center">
               <p className="text-sm text-muted-foreground">

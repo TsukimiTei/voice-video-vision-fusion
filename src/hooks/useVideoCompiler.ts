@@ -227,18 +227,25 @@ export const useVideoCompiler = () => {
               status: 'completed',
               video_url: mergedVideoUrl,
               original_video_url: URL.createObjectURL(originalVideoBlob!),
-              generated_video_url: generatedVideoObjectUrl
+              generated_video_url: statusData.videoUrl // Use the original Kling URL, not the object URL
             });
             
           } catch (downloadError) {
             console.error('Error downloading generated video:', downloadError);
             addLog(`❌ 下载生成视频失败: ${downloadError instanceof Error ? downloadError.message : '未知错误'}`);
             
-            // Fallback: still show the generated video URL
+            // Fallback: still show the generated video URL and update task with what we have
             setResult({
               videoUrl: statusData.videoUrl,
               prompt: statusData.prompt || '',
               generatedVideoUrl: statusData.videoUrl
+            });
+            
+            // Update task with generated video URL even if merging failed
+            await updateTask(taskId, {
+              status: 'completed',
+              video_url: statusData.videoUrl,
+              generated_video_url: statusData.videoUrl
             });
           }
           
