@@ -222,10 +222,12 @@ export const useVideoCompiler = () => {
             });
             addLog("🎉 完整视频准备就绪！");
             
-            // Update task in database with merged video URL
+            // Update task in database with merged video URL and individual video URLs
             await updateTask(taskId, {
               status: 'completed',
-              video_url: mergedVideoUrl
+              video_url: mergedVideoUrl,
+              original_video_url: URL.createObjectURL(originalVideoBlob!),
+              generated_video_url: generatedVideoObjectUrl
             });
             
           } catch (downloadError) {

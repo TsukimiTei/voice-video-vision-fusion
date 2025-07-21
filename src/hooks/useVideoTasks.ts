@@ -7,6 +7,8 @@ export interface VideoTask {
   prompt: string;
   status: 'processing' | 'completed' | 'failed';
   video_url?: string;
+  original_video_url?: string;
+  generated_video_url?: string;
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -79,7 +81,7 @@ export const useVideoTasks = () => {
   }, [setSessionContext]);
 
   // Update task status
-  const updateTask = useCallback(async (taskId: string, updates: Partial<Pick<VideoTask, 'status' | 'video_url' | 'error_message'>>) => {
+  const updateTask = useCallback(async (taskId: string, updates: Partial<Pick<VideoTask, 'status' | 'video_url' | 'original_video_url' | 'generated_video_url' | 'error_message'>>) => {
     try {
       await setSessionContext();
       

@@ -3,6 +3,7 @@ import { ArrowLeft, Download, RotateCcw } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { VideoTask } from '../hooks/useVideoTasks';
+import SeamlessVideoPlayer from './SeamlessVideoPlayer';
 
 interface VideoTaskResultProps {
   task: VideoTask;
@@ -35,16 +36,28 @@ const VideoTaskResult: React.FC<VideoTaskResultProps> = ({ task, onBack, onCreat
         {/* Main result video */}
         {task.status === 'completed' && task.video_url && (
           <div className="space-y-6">
-            {/* Final generated video */}
+            {/* Seamless video player */}
             <div className="text-center space-y-4">
-              <h2 className="text-lg font-semibold">最终拼接视频</h2>
+              <h2 className="text-lg font-semibold">连续播放视频</h2>
               <div className="max-w-2xl mx-auto">
-                <video 
-                  controls 
-                  className="w-full rounded-lg shadow-lg"
-                  src={task.video_url}
+                <SeamlessVideoPlayer
+                  originalVideoUrl={task.original_video_url}
+                  generatedVideoUrl={task.generated_video_url}
+                  className="w-full"
                 />
               </div>
+              
+              {/* Fallback: Show merged video if individual videos are not available */}
+              {(!task.original_video_url || !task.generated_video_url) && task.video_url && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium mb-2">合并视频</h3>
+                  <video 
+                    controls 
+                    className="w-full rounded-lg shadow-lg"
+                    src={task.video_url}
+                  />
+                </div>
+              )}
               <div className="space-y-3">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm font-medium text-muted-foreground mb-2">生成提示词:</p>
