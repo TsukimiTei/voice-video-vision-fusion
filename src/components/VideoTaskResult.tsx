@@ -42,7 +42,7 @@ const VideoTaskResult: React.FC<VideoTaskResultProps> = ({ task, onBack, onCreat
               <div className="max-w-2xl mx-auto">
                 <SeamlessVideoPlayer
                   originalVideoUrl={task.original_video_url}
-                  generatedVideoUrl={task.generated_video_url}
+                  generatedVideoUrl={task.generated_video_url || task.video_url}
                   className="w-full"
                 />
               </div>

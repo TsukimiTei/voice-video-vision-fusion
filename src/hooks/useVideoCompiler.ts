@@ -226,7 +226,7 @@ export const useVideoCompiler = () => {
             await updateTask(taskId, {
               status: 'completed',
               video_url: mergedVideoUrl,
-              original_video_url: URL.createObjectURL(originalVideoBlob!),
+              original_video_url: null, // We don't have a permanent URL for original video
               generated_video_url: statusData.videoUrl // Use the original Kling URL, not the object URL
             });
             

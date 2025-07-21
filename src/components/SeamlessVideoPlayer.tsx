@@ -156,6 +156,24 @@ const SeamlessVideoPlayer: React.FC<SeamlessVideoPlayerProps> = ({
     };
   }, []);
 
+  // If only generated video is available, show it directly
+  if (!originalVideoUrl && generatedVideoUrl) {
+    return (
+      <div className={`space-y-4 ${className}`}>
+        <div className="text-center space-y-4">
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">仅显示AI生成视频</p>
+          </div>
+          <video 
+            controls 
+            className="w-full rounded-lg shadow-lg"
+            src={generatedVideoUrl}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (!originalVideoUrl && !generatedVideoUrl) {
     return (
       <div className={`space-y-4 ${className}`}>
