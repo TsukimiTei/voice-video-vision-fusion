@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           created_at: string
           error_message: string | null
+          generated_video_url: string | null
           id: string
+          original_video_url: string | null
           prompt: string
           status: string
           task_id: string
@@ -29,7 +31,9 @@ export type Database = {
         Insert: {
           created_at?: string
           error_message?: string | null
+          generated_video_url?: string | null
           id?: string
+          original_video_url?: string | null
           prompt: string
           status?: string
           task_id: string
@@ -40,7 +44,9 @@ export type Database = {
         Update: {
           created_at?: string
           error_message?: string | null
+          generated_video_url?: string | null
           id?: string
+          original_video_url?: string | null
           prompt?: string
           status?: string
           task_id?: string
